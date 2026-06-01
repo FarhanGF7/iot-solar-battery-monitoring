@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ringkasan PLTS</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-title">PLTS Monitoring</span>
+    <div class="topbar-login">
+      <img src="assets/user.png" class="login-icon">
+      <span id="loginUser">Login</span>
+    </div>    
+  </div>
+
+  <div class="main-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar hide" id="sidebar">
+      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik</a>
+      <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+      <a href="solartracker.html"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
+      <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu">Analitik Tracker</a>
+      <a href="wiper.html" class="active">Wiper Panel</a>
+      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu">Logout</a>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <!-- METRICS -->
+      <div class="analytics-metrics">
+        <div class="card">
+          <h6>Daya Produksi</h6>
+          <h4 id="power-produce">-- W</h4>
+        </div>
+        <div class="card">
+          <h6>Daya Beban</h6>
+          <h4 id="power-load">-- W</h4>
+        </div>
+        <div class="card">
+          <h6>Energi Hari Ini</h6>
+          <h4 id="energy-today">-- kWh</h4>
+        </div>
+        <div class="card">
+          <h6>Kesehatan Baterai</h6>
+          <h4 id="battery-health">--%</h4>
+        </div>
+      </div>
+
+      <!-- DIAGRAM + GRAFIK -->
+      <div class="diagram-section">
+        <!-- Diagram -->
+        <div class="diagram-container">
+          <h5 class="section-title-inside">Diagram Aliran Energi</h5>
+          <div class="diagram-box" id="solar-icon">
+            <div class="diagram-icon"><img src="assets/sun.png" class="icon-svg"></div>
+            <div class="diagram-label">Produksi</div>
+          </div>
+          <div class="diagram-box" id="battery-icon">
+            <div class="diagram-icon"><img src="assets/battery-charge.png" class="icon-svg"></div>
+            <div class="diagram-label">Baterai</div>
+          </div>
+          <div class="diagram-box" id="house-icon">
+            <div class="diagram-icon"><img src="assets/home.png" class="icon-svg"></div>
+            <div class="diagram-label">Beban</div>
+          </div>
+          <div class="diagram-box" id="panel-icon">
+            <div class="diagram-icon"><img src="assets/solar-panel.png" class="icon-svg"></div>
+            <div class="diagram-label">Panel</div>
+          </div>
+          <div class="connection-line" style="top: 30%; left: 24%; width: 20%;"></div>
+          <div class="connection-line reverse" style="top: 30%; left: 60%; width: 19%;"></div>
+          <div class="connection-line dot-vertical" style="top: 44%; left: 51%; height: 25%;"></div>
+        </div>
+
+        <!-- Grafik -->
+        <div class="graph-section">
+          <div class="graph-header">
+            <span>Puncak Produksi: <b id="peak">-- W</b></span>
+            <span>Rata-rata Beban: <b id="avg-load">-- W</b></span>
+            <span>Energi Netto: <b id="net-energy">-- kWh</b></span>
+          </div>
+          <canvas id="lineChart" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="chart.js"></script>
+  <script src="script.js"></script>
+  <script src="session.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ringkasan PLTS</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Toggle Button -->
+    <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-title">PLTS Monitoring</span>
+    <div class="topbar-login">
+      <img src="assets/user.png" class="login-icon">
+      <span id="loginUser">Login</span>
+    </div>  
+  </div>
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <div class="sidebar hide" id="sidebar">
+      <h4 class="text-center"></h4>
+      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik</a>
+      <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+      <a href="solartracker.html"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
+      <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu">Analitik Tracker</a>
+      <a href="wiper.html" class="active">Wiper Panel</a>
+      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu">Logout</a>
+      
+
+    </div>
+    
+    <!-- Main Content -->
+    <div class="content">
+        <h2>Manajemen Akun</h2>
+  
+        <form id="createUserForm" class="form-panel">
+          <h4>Buat Akun Baru</h4>
+          <input type="text" name="username" placeholder="Username" required>
+          <input type="password" name="password" placeholder="Password" required>
+          <select name="role">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button type="submit">Tambah Akun</button>
+          <div id="notif"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('hide');
+    }
+  </script>
+  <script src="pengaturan.js"></script>
+</body>
+</html>

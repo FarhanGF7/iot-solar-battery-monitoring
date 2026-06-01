@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Tracker 3D - PLTS Monitoring</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>  
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="main-layout">
+    <div class="sidebar" id="sidebar">
+      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik</a>
+      <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+      <a href="solartracker.html" class="active"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
+      <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu">Analitik Tracker</a>
+      <a href="wiper.html" class="active">Wiper Panel</a>
+      <a href="login.html"><img src="assets/keluar.png" class="icon-menu"> Logout</a>
+    </div>
+
+    <div class="content">
+      <div class="judul-section">
+        <h2>Visualisasi Pergerakan Panel Surya (3D)</h2>
+        <p>Menampilkan pergerakan panel berdasarkan sudut servo secara real-time.</p>
+      </div>      
+        <div class="visualisasi" id="visualisasi" 
+        style="width: 100%; height: 600px; background-color: #0b0f1a; border-radius: 10px;">
+   </div>
+   <div id="infoContainer" style="margin-top:20px; text-align:center; font-family:sans-serif;">
+    <h2 style="color:black;">Status Solar Tracker</h2>
+  
+    <div style="display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-top:15px;">
+      
+      <div style="background:#1c2533; padding:15px 25px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+        <h3>Sudut Servo</h3>
+        <p>Horizontal (X): <span id="servoX">0°</span></p>
+        <p>Vertikal (Y): <span id="servoY">0°</span></p>
+      </div>
+  
+      <div style="background:#1c2533; padding:15px 25px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+        <h3>Intensitas Cahaya (LDR)</h3>
+        <p>LDR1: <span id="ldr1">0</span></p>
+        <p>LDR2: <span id="ldr2">0</span></p>
+        <p>LDR3: <span id="ldr3">0</span></p>
+        <p>LDR4: <span id="ldr4">0</span></p>
+      </div>
+    </div>
+    <div style="margin-top:20px; font-size:14px; color:#555;">
+      <p>☀️ Posisi Matahari: 
+        <span id="arahMatahari">–</span>, 
+        Elevasi <span id="elevasiMatahari">–°</span>
+      </p>
+    </div>
+  </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="solartracker.js"></script>
+  <script src="session.js"></script>
+</body>
+</html>

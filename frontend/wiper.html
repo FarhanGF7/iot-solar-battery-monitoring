@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Wiper Panel | PLTS Monitoring</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="wiper.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="topbar">
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  <span class="topbar-title">PLTS Monitoring</span>
+</div>
+
+<div class="main-layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
+    <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik</a>
+    <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+    <a href="solartracker.html"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
+    <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu"> Analitik Tracker</a>
+    <a href="wiper.html" class="active">Wiper Panel</a>
+    <a href="login.html"><img src="assets/keluar.png" class="icon-menu"> Logout</a>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="main-content">
+    <h2>Monitoring Wiper Panel Surya</h2>
+
+    <div class="card-grid">
+      <div class="card">
+        <h6>Level Debu</h6>
+        <h3 id="dustValue">-- mg/m³</h3>
+      </div>
+    </div>
+
+    <button id="downloadCSV" class="btn-download">
+      ⬇ Download Data CSV
+    </button>
+
+    <div class="chart-box">
+      <h4>Grafik Sensor Debu</h4>
+      <canvas id="dustChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    sidebar.classList.toggle("hide");
+  }
+  </script>
+  
+<script src="wiper.js"></script>
+</body>
+</html>

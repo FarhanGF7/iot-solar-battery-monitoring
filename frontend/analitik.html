@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analitik Energi - PLTS Monitoring</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Toggle Button -->
+    <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-title">PLTS Monitoring</span>
+    <div class="topbar-login">
+      <img src="assets/user.png" class="login-icon">
+      <span id="loginUser">Login</span>
+    </div>    
+  </div>
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <div class="sidebar hide" id="sidebar">
+      <h4 class="text-center"></h4>
+      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik</a>
+      <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+      <a href="solartracker.html"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
+      <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu">Analitik Tracker</a>
+      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu">Logout</a>
+    </div>
+
+    <!-- Konten -->
+    <div class="content">
+      <h2>Analitik Energi</h2>
+
+      <!-- Ringkasan -->
+      <div class="summary-cards">
+        <div class="card"><h5>Total Energi Hari Ini</h5><h3 id="energy-today">-- kWh</h3></div>
+        <div class="card"><h5>Daya Puncak</h5><h3 id="peak-power">-- W</h3></div>
+        <div class="card"><h5>Efisiensi</h5><h3 id="efficiency">-- %</h3></div>
+      </div>
+
+      <!-- Filter Tanggal -->
+      <div class="filter-row">
+        <label for="dateFilter">Pilih Tanggal:</label>
+        <input type="date" id="dateFilter" name="dateFilter">
+      </div>
+
+      <!-- Grafik Produksi vs Beban -->
+      <div class="chart-section">
+        <h4>Produksi vs Beban</h4>
+        <canvas id="powerChart" height="100"></canvas>
+      </div>
+
+      <!-- Grafik Energi Harian -->
+      <div class="chart-section">
+        <h4>Energi Harian</h4>
+        <canvas id="energyChart" height="100"></canvas>
+      </div>
+
+      <!-- Export Data -->
+      <button id="exportBtn">⬇️ Export CSV</button>
+    </div>
+  </div>
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('hide');
+    }
+  </script>
+  <script src="analitik.js"></script>
+  <script src="session.js"></script>
+</body>
+</html>

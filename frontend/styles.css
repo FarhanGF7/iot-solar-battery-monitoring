@@ -1,0 +1,452 @@
+  body {
+    background-color: #0e141b;
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+  }
+
+  .main-layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .icon-menu {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar {
+    width: 200px;
+    background-color: #111927;
+    color: #00c8ff;
+    padding-top: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+  }
+
+  .sidebar.hide {
+    transform: translateX(-100%);
+    position: fixed;
+  }
+
+  .sidebar a {
+    color: #ffffff;
+    text-decoration: none;
+    display: block;
+    padding: 12px 20px;
+    border-left: 4px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar a:hover {
+    background-color: #0000001c;
+    border-left: 4px solid #ffffff;
+  }
+  /* FIX SIDEBAR POSISI */
+  .sidebar {
+      position: fixed;
+      top: 60px; /* penting! sesuaikan tinggi topbar */
+      left: 0;
+      height: calc(100% - 60px);
+      overflow-y: auto;
+      transform: translateX(0); /* default tampil */
+  }
+
+  /* Saat hide, geser keluar */
+  .sidebar.hide {
+      transform: translateX(-100%);
+  }
+
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background-color: #111927;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    z-index: 1100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+
+    .topbar-title {
+      color: #ffffff;
+      font-size: 1.1rem;
+      margin-left: 1rem;
+      flex: 1;
+    }
+    
+    .topbar-login {
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 1.1rem;
+      margin-right: 40px;
+    }
+    .login-icon {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+  }
+  .menu-toggle {
+    font-size: 1.6rem;
+    color: #ffffff;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .main-content {
+    flex: 1;
+    padding: 3rem;
+    overflow-y: auto;
+  }
+
+  .analytics-metrics {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .analytics-metrics .card {
+    margin-top: 20px;
+    border-left: 4px solid #ffffff0e;
+    padding: 15px;
+    text-align: left;
+    width: 23%;
+    box-sizing: border-box;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 200, 255, 0.1);
+  }
+
+  .card h6 {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 0.3rem;
+  }
+
+  .card h4 {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+  }
+
+  .diagram-section {
+    display: fLex;
+    justify-content: space-between;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .section-title-inside {
+    font-size: 1.1rem;
+    color: #ffffff;
+    font-weight: bold;
+    margin: 0;
+    padding-left: 10px;
+    text-align: center;
+  }
+  .diagram-container {  
+    position: relative;
+    background-color: #0000001c;
+    border-radius: 12px;
+    padding: 20px;
+    padding-top: 60px;
+    width: 100%;
+    max-width: 700px;
+    aspect-ratio: 16 / 9;
+    margin: auto;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  }
+
+  .diagram-box {
+    width: 80px;
+    height: 80px;
+    top: 10px;
+    background-color: #0000001c;
+    border-radius: 90px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    box-shadow: 0 0 5px rgb(255, 255, 255);
+    
+  }
+
+  .icon-svg {
+    width: 40px;
+    height: 40px;
+    object-fit: relative;
+  }
+
+  .diagram-label {
+    font-size: 0.9rem;
+    color: #ffffff;
+    text-align: center;
+    margin-top: 4px;
+  }
+  .connection-line {
+    position: absolute;
+    height: 6px;
+    background-image: radial-gradient(circle, #00c8ff 2px, transparent 2px);
+    background-size: 10px 100%;
+    background-repeat: repeat-x;
+    animation: moveDotsRight 1s linear infinite;
+  }
+
+  /* Tambahkan kelas ini jika ingin arah sebaliknya */
+  .connection-line.reverse {
+    animation: moveDotsLeft 1s linear infinite;
+  }
+  .dot-vertical {
+    width: 8px;
+    background-image: radial-gradient(circle, #facc15 2px, transparent 2px);
+    background-repeat: repeat-y;
+    background-size: 8px 12px;
+    animation: moveDotsY 1s linear infinite;
+  }
+  @keyframes moveDotsY {
+    from { background-position-y: 10px; }
+    to { background-position-y: 0; }
+  }
+  @keyframes moveDotsRight {
+    from { background-position-x: 10px; }
+    to { background-position-x: 0; }
+  }
+
+  /* Animasi kanan ke kiri */
+  @keyframes moveDotsLeft {
+    from { background-position-x: 0; }
+    to { background-position-x: 10px; }
+  }
+  #solar-icon { top: 20%; left: 10%; }
+  #battery-icon { top: 20%; left: 45%; }
+  #house-icon { top: 20%; left: 80%; }
+  #panel-icon { top: 70%; left: 45%; }
+
+
+  /* Connection line manual positioning */
+
+
+  .graph-section {
+    position: relative;
+    background-color: #0000001c;
+    border-radius: 12px;
+    padding: 20px;
+    padding-top: 60px;
+    width: 100%;
+    max-width: 700px;
+    aspect-ratio: 16 / 9;
+    margin: auto;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+  }
+
+  .graph-header {
+    display: flex;
+    justify-content: space-between;
+    color: #ffffff;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  canvas {
+    background-color: transparent;
+  }
+
+
+
+  /* settings */
+
+
+
+  .content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+  }
+
+  .form-panel {
+    background-color: #0000001c;
+    padding: 100px;
+    border-radius: 10px;
+    max-width: 800px;
+  }
+
+  .form-panel h4 {
+    margin-bottom: 15px;
+    color: #ffffff;
+  }
+
+  .form-panel input,
+  .form-panel select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: #2c3344;
+    color: rgb(253, 253, 253);
+  }
+
+  .form-panel button {
+    width: 100%;
+    padding: 10px;
+    background-color: #00c8ff5e;
+    color: rgb(17, 17, 17);
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .form-panel button:hover {
+    background-color: #ffffff;
+  }
+
+  #notif {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: rgb(8, 255, 70);
+  }
+
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 14px;
+    text-align: center;
+    color: #ffffff;
+    background-color: #1f2937; /* warna dasar tabel */
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .data-table th, .data-table td {
+    padding: 10px 12px;
+    border: 1px solid #2f3b4c;
+  }
+
+  .data-table th {
+    background-color: #374151; /* header lebih gelap */
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .data-table tbody tr:nth-child(even) {
+    background-color: #2d3748;
+  }
+
+  .data-table tbody tr:nth-child(odd) {
+    background-color: #1e2632;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: #475569;
+    transition: background-color 0.2s;
+  }
+
+  /* tombol export */
+  #exportBtn {
+    display: block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  #exportBtn:hover {
+    background-color: #1d4ed8;
+  }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #0f1724;
+    color: white;
+  }
+
+  .main-layout {
+    display: flex;
+    height: 100vh;
+  }
+
+  .content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+  }
+
+  .summary-cards {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .summary-cards .card {
+    background-color: #1e293b;
+    padding: 20px;
+    border-radius: 10px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .filter-row {
+    margin-bottom: 20px;
+  }
+
+  .filter-row label {
+    margin-right: 10px;
+  }
+
+  .chart-section {
+    margin-bottom: 40px;
+    background-color: #1e293b;
+    padding: 20px;
+    border-radius: 10px;
+  }
+  #exportBtn:hover {
+    background-color: #009fcf;
+  }
+
+  .judul-section {
+    text-align: center;
+    margin-bottom: 20px;
+    margin-top: 10px;
+  }
+
+  .judul-section h2 {
+    color: #FFD700;
+    font-size: 28px;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+  }
+
+  .judul-section p {
+    color: #ccc;
+    font-size: 16px;
+    margin-top: 5px;
+    font-style: italic;
+  }

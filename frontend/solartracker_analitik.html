@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analitik Solar Tracker - PLTS Monitoring</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-title">PLTS Monitoring</span>
+    <div class="topbar-login">
+      <img src="assets/user.png" class="login-icon">
+      <span id="loginUser">Login</span>
+    </div>
+  </div>
+  <div class="main-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar hide" id="sidebar">
+      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik Energi</a>
+      <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+      <a href="solartracker.html" class="active"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
+      <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu"> Analitik Tracker</a>
+      <a href="wiper.html" class="active">Wiper Panel</a>
+      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu"> Logout</a>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <h2>Analitik Solar Tracker</h2>
+      <!-- SUMMARY CARDS -->
+      <div class="summary-cards">
+        <div class="card">
+          <h5>Posisi X (Derajat)</h5>
+          <h3 id="posX">-- °</h3>
+        </div>
+        <div class="card">
+          <h5>Posisi Y (Derajat)</h5>
+          <h3 id="posY">-- °</h3>
+        </div>
+        <div class="card">
+          <h5>Status Tracker</h5>
+          <h3 id="trackerStatus">--</h3>
+        </div>
+      </div>
+      <!-- FILTER -->
+      <div class="filter-row">
+        <label for="tanggalTracker">Pilih Tanggal:</label>
+        <input type="date" id="tanggalTracker" name="tanggalTracker">
+      </div>
+      <!-- CHART SERVO -->
+      <div class="chart-section">
+        <h4>Pergerakan Servo X & Y</h4>
+        <canvas id="servoChart" height="100"></canvas>
+      </div>
+      <!-- CHART LDR -->
+      <div class="chart-section">
+        <h4>Intensitas Cahaya (LDR Kiri & Kanan)</h4>
+        <canvas id="ldrChart" height="100"></canvas>
+      </div>
+
+      <!-- HISTORY TABLE -->
+      <div class="chart-section">
+        <h4>Riwayat Pergerakan Tracker</h4>
+
+        <table class="data-table" id="historyTable">
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Servo X</th>
+              <th>Servo Y</th>
+              <th>LDR1</th>
+              <th>LDR2</th>
+              <th>LDR3</th>
+              <th>LDR4</th>
+              <th>ARAH</th>
+            </tr>
+          </thead>
+          <tbody id="trackerTableBody"></tbody>
+        </table>
+      </div>
+      <button id="exportBtn">⬇️ Export CSV</button>
+    </div>
+  </div>
+  <script>
+    // Fungsi export CSV
+    function exportCSV() {
+      // Endpoint sesuai router: /tracker/export
+      window.location.href = "/export";
+    }
+    document.getElementById("exportBtn").addEventListener("click", exportCSV);
+  </script>
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('hide');
+    }
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="solartracker_analitik.js"></script>
+  <script src="session.js"></script>
+</body>
+</html>
