@@ -18,12 +18,37 @@ async function fetchLiveData() {
 
     const dayaPanel = data.panel.power || 0;
     const dayaBeban = data.beban.power || 0;
+    
+    // 1. Tangkap Data Fuzzy dari Backend
+    const suhuBaterai = data.beban.temperature || 0;
+    const fuzzyStatus = data.beban.fuzzy_status || "Menunggu...";
+    const fuzzyScore = data.beban.fuzzy_score || 0;
 
-    // Update metric card
+    // 2. Update metric card standar
     document.getElementById('power-produce').textContent = `${dayaPanel.toFixed(2)} W`;
     document.getElementById('power-load').textContent = `${dayaBeban.toFixed(2)} W`;
 
-    // Tambah ke grafik
+    // 3. Update Kartu Status Fuzzy & Indikator Warna
+    const statusEl = document.getElementById('battery-status');
+    const cardStatus = document.getElementById('card-status');
+    
+    statusEl.textContent = fuzzyStatus;
+    document.getElementById('battery-temp').textContent = `Suhu: ${suhuBaterai.toFixed(1)} °C`;
+    document.getElementById('battery-score').textContent = `Skor: ${fuzzyScore}`;
+
+    // Logika Warna (Traffic Light)
+    if (fuzzyStatus === "Baik") {
+      statusEl.style.color = "#28a745"; // Hijau
+      cardStatus.style.borderLeft = "5px solid #28a745";
+    } else if (fuzzyStatus === "Waspada") {
+      statusEl.style.color = "#ffc107"; // Kuning Orange
+      cardStatus.style.borderLeft = "5px solid #ffc107";
+    } else if (fuzzyStatus === "Kritis") {
+      statusEl.style.color = "#dc3545"; // Merah
+      cardStatus.style.borderLeft = "5px solid #dc3545";
+    }
+
+    // 4. Tambah ke grafik (Line Chart)
     const now = new Date().toLocaleTimeString();
     const chart = window.lineChart;
 
@@ -53,7 +78,6 @@ async function loadDashboardMetrics() {
     const data = await res.json();
 
     document.getElementById("energy-today").textContent = `${data.energy_today ?? 0} kWh`;
-    document.getElementById("battery-health").textContent = `${data.battery_health ?? 0} %`;
     document.getElementById("peak").textContent = `${data.peak_power ?? 0} W`;
     document.getElementById("avg-load").textContent = `${data.avg_load ?? 0} W`;
     document.getElementById("net-energy").textContent = `${data.net_energy ?? 0} kWh`;

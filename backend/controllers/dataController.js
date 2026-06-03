@@ -14,9 +14,62 @@ function voltageToSoc(v) {
 }
 const db = require('../db').pool;
 
-//
-// === POST DATA (Panel + Beban) ===
-//
+// 
+// === MESIN FUZZY LOGIC ===
+// 
+function hitungFuzzyBaterai(v, i, t) {
+    // 1. FUZZIFIKASI TEGANGAN (Voltage)
+    let v_rendah = (v <= 11.5) ? 1 : (v >= 12.0 ? 0 : (12.0 - v) / (12.0 - 11.5));
+    let v_normal = (v <= 11.5 || v >= 14.0) ? 0 : (v > 11.5 && v <= 12.0 ? (v - 11.5) / (12.0 - 11.5) : (v >= 13.5 && v < 14.0 ? (14.0 - v) / (14.0 - 13.5) : 1));
+    let v_tinggi = (v <= 13.5) ? 0 : (v >= 14.0 ? 1 : (v - 13.5) / (14.0 - 13.5));
+
+    // 2. FUZZIFIKASI ARUS (Current)
+    let i_ringan = (i <= 2) ? 1 : (i >= 3 ? 0 : (3 - i) / (3 - 2));
+    let i_sedang = (i <= 2 || i >= 6) ? 0 : (i > 2 && i <= 3 ? (i - 2) / (3 - 2) : (i >= 5 && i < 6 ? (6 - i) / (6 - 5) : 1));
+    let i_berat  = (i <= 5) ? 0 : (i >= 6 ? 1 : (i - 5) / (6 - 5));
+
+    // 3. FUZZIFIKASI SUHU (Temperature)
+    let t_normal = (t <= 35) ? 1 : (t >= 40 ? 0 : (40 - t) / (40 - 35));
+    let t_hangat = (t <= 35 || t >= 50) ? 0 : (t > 35 && t <= 40 ? (t - 35) / (40 - 35) : (t >= 45 && t < 50 ? (50 - t) / (50 - 45) : 1));
+    let t_panas  = (t <= 45) ? 0 : (t >= 50 ? 1 : (t - 45) / (50 - 45));
+
+    // 4. EVALUASI ATURAN (Rule Base & Inferensi)
+    let rules = [];
+
+    // Nilai Konstanta Output
+    const VAL_KRITIS = 25, VAL_WASPADA = 60, VAL_BAIK = 100;
+
+    rules.push({ alpha: Math.min(v_normal, t_normal), z: VAL_BAIK }); // Rule 1: IF V Normal AND T Normal THEN Baik
+    rules.push({ alpha: Math.min(v_tinggi, t_normal), z: VAL_BAIK }); // Rule 2: IF V Tinggi AND T Normal THEN Baik
+    rules.push({ alpha: t_panas, z: VAL_KRITIS }); // Rule 3: IF T Panas THEN Kritis
+    rules.push({ alpha: Math.min(v_rendah, i_berat), z: VAL_KRITIS }); // Rule 4: IF V Rendah AND I Berat THEN Kritis
+    rules.push({ alpha: Math.min(v_rendah, t_hangat), z: VAL_WASPADA }); // Rule 5: IF V Rendah AND T Hangat THEN Waspada
+    rules.push({ alpha: Math.min(v_normal, t_hangat), z: VAL_WASPADA }); // Rule 6: IF V Normal AND T Hangat THEN Waspada
+    rules.push({ alpha: Math.min(v_tinggi, t_hangat), z: VAL_WASPADA }); // Rule 7: IF V Tinggi AND T Hangat THEN Waspada
+
+    // 5. DEFUZZIFIKASI (Metode Weighted Average / Rata-rata Berbobot)
+    let totalAlphaZ = 0, totalAlpha = 0;
+    for (let j = 0; j < rules.length; j++) {
+        totalAlphaZ += (rules[j].alpha * rules[j].z);
+        totalAlpha += rules[j].alpha;
+    }
+
+    // Mencegah pembagian dengan 0 jika data error/di luar nalar
+    let finalScore = (totalAlpha === 0) ? 0 : (totalAlphaZ / totalAlpha);
+    
+    // 6. PENENTUAN STATUS AKHIR BERDASARKAN SKOR
+    let status = "Tidak Diketahui";
+    
+    if (finalScore >= 75) status = "Baik";
+    else if (finalScore >= 45 && finalScore < 75) status = "Waspada";
+    else status = "Kritis";
+
+    return { score: parseFloat(finalScore.toFixed(2)), status: status };
+}
+
+// 
+// === FUNGSI POST DATA ===
+// 
 const postData = (req, res) => {
   const { panel, beban } = req.body;
 
@@ -24,8 +77,16 @@ const postData = (req, res) => {
     return res.status(400).json({ message: "Data tidak lengkap" });
   }
 
+  // Jalankan perhitungan Fuzzy Logic menggunakan data dari beban (baterai)
+  // Beri nilai default 30 (suhu ruangan) jika sensor suhu sempat gagal terbaca
+  const suhuBaterai = beban.temperature || 30.0; 
+  const hasilFuzzy = hitungFuzzyBaterai(beban.voltage, beban.current, suhuBaterai);
+
+  // Perintah SQL untuk Panel (Tetap sama)
   const qPanel = `INSERT INTO panel (voltage, current, power) VALUES (?, ?, ?)`;
-  const qBeban = `INSERT INTO beban (voltage, current, power) VALUES (?, ?, ?)`;
+  
+  // Perintah SQL untuk Beban (Ditambah suhu dan hasil fuzzy)
+  const qBeban = `INSERT INTO beban (voltage, current, power, temperature, fuzzy_score, fuzzy_status) VALUES (?, ?, ?, ?, ?, ?)`;
 
   db.query(qPanel, [panel.voltage, panel.current, panel.power], (err) => {
     if (err) {
@@ -33,13 +94,18 @@ const postData = (req, res) => {
       return res.status(500).json({ message: "Gagal simpan data panel" });
     }
 
-    db.query(qBeban, [beban.voltage, beban.current, beban.power], (err2) => {
+    // Simpan data beban beserta suhu dan evaluasi fuzzy-nya
+    db.query(qBeban, [beban.voltage, beban.current, beban.power, suhuBaterai, hasilFuzzy.score, hasilFuzzy.status], (err2) => {
       if (err2) {
         console.error("Gagal simpan BEBAN:", err2);
         return res.status(500).json({ message: "Gagal simpan data beban" });
       }
 
-      res.json({ message: "Data panel & beban berhasil disimpan" });
+      res.json({ 
+          message: "Data tersimpan & Dievaluasi!",
+          fuzzy_status: hasilFuzzy.status,
+          fuzzy_score: hasilFuzzy.score
+      });
     });
   });
 };
@@ -55,7 +121,10 @@ const getLatestData = (req, res) => {
       p.power AS panel_power,
       b.voltage AS beban_voltage,
       b.current AS beban_current,
-      b.power AS beban_power
+      b.power AS beban_power,
+      b.temperature AS beban_temperature,
+      b.fuzzy_score,
+      b.fuzzy_status
     FROM panel p
     JOIN beban b ON b.id = (SELECT MAX(id) FROM beban)
     ORDER BY p.id DESC
@@ -72,7 +141,6 @@ const getLatestData = (req, res) => {
       return res.status(404).json({ message: "Belum ada data" });
     }
 
-    // Format sesuai script.js frontend
     res.json({
       panel: {
         voltage: results[0].panel_voltage,
@@ -82,7 +150,10 @@ const getLatestData = (req, res) => {
       beban: {
         voltage: results[0].beban_voltage,
         current: results[0].beban_current,
-        power: results[0].beban_power
+        power: results[0].beban_power,
+        temperature: results[0].beban_temperature, // Suhu baterai
+        fuzzy_score: results[0].fuzzy_score,       // Skor fuzzy (misal 85.5)
+        fuzzy_status: results[0].fuzzy_status      // Status (Baik/Waspada/Kritis)
       }
     });
   });
@@ -224,7 +295,10 @@ const getCombinedData = (req, res) => {
       p.power AS panel_power,
       b.voltage AS beban_voltage,
       b.current AS beban_current,
-      b.power AS beban_power
+      b.power AS beban_power,
+      b.temperature AS beban_temperature, 
+      b.fuzzy_score, 
+      b.fuzzy_status 
     FROM panel p
     JOIN beban b 
       ON ABS(TIMESTAMPDIFF(SECOND, p.created_at, b.created_at)) <= 1
@@ -252,7 +326,10 @@ const getAllPanelBeban = (req, res) => {
       p.power AS panel_power,
       b.voltage AS beban_voltage,
       b.current AS beban_current,
-      b.power AS beban_power
+      b.power AS beban_power,
+      b.temperature AS beban_temperature, 
+      b.fuzzy_score, 
+      b.fuzzy_status 
     FROM panel p
     JOIN beban b 
       ON ABS(TIMESTAMPDIFF(SECOND, p.created_at, b.created_at)) <= 1
