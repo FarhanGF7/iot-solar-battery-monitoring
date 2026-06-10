@@ -6,15 +6,7 @@ window.lineChart = new Chart(ctx, {
     labels: [],
     datasets: [
       {
-        label: 'Produksi (W)',
-        data: [],
-        borderColor: '#facc15',
-        backgroundColor: 'rgba(250, 204, 21, 0.2)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Beban (W)',
+        label: 'Daya Input Baterai (W)',
         data: [],
         borderColor: '#3b82f6',
         backgroundColor: 'rgba(59, 130, 246, 0.2)',

@@ -12,7 +12,30 @@
     background: #0f172a;
     padding: 20px;
     border-radius: 12px;
+    margin-top: 20px;
     margin-bottom: 30px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .chart-box canvas {
+    max-height: 400px;
+    width: 100% !important;
+  }
+
+  /* Layar Laptop (Resolusi Menengah) */
+  @media (max-width: 1366px) {
+    .chart-box canvas {
+      max-height: 300px;
+    }
+  }
+
+  /* Layar Tablet & HP (Resolusi Kecil) */
+  @media (max-width: 768px) {
+    .chart-box canvas {
+      max-height: 220px;
+    }
   }
   
   h4 {

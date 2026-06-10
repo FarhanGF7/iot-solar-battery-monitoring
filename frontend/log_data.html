@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Data Sensor | FHN Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-title">FHN Lab - Evaluasi Baterai <span id="device-status" style="font-size: 0.8rem; font-weight: normal; margin-left: 15px; color: #ff5252; background: rgba(255,82,82,0.1); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(255,82,82,0.2);">Offline 🔴</span></span>
+    <div class="topbar-login">
+      <img src="assets/user.png" class="login-icon">
+      <span id="loginUser">Login</span>
+    </div>    
+  </div>
+
+  <div class="main-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar hide" id="sidebar">
+      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Dashboard Utama</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik & Grafik</a>
+      <a href="log_data.html" class="active"><img src="assets/web.png" class="icon-menu"> Log Data Sensor</a>
+      <a href="wiper.html"><img src="assets/solar.png" class="icon-menu"> Wiper Panel</a>
+      <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
+      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu"> Keluar</a>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+      <h2>Log Data Sensor (Tabel Mentah)</h2>
+      <p style="color: #94a3b8; margin-bottom: 1.5rem;">Menampilkan log data sensor panel surya dan beban baterai lengkap dengan hasil evaluasi logika fuzzy secara real-time dari database MySQL.</p>
+
+      <div style="overflow-x: auto; background-color: #111927; border-radius: 8px; padding: 10px; border: 1px solid #2f3b4c;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th rowspan="2">Waktu</th>
+              <th colspan="4">Daya Input Baterai</th>
+              <th colspan="2">Sistem Cerdas (Fuzzy)</th>
+            </tr>
+            <tr>
+              <th>Tegangan (V)</th>
+              <th>Arus (A)</th>
+              <th>Daya (W)</th>
+              <th>Suhu (°C)</th>
+              <th>Skor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody">
+            <tr>
+              <td colspan="7" style="padding: 20px; color: #94a3b8;">Sedang memuat data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('hide');
+    }
+  </script>
+  <script src="log_data.js"></script>
+  <script src="session.js"></script>
+</body>
+</html>

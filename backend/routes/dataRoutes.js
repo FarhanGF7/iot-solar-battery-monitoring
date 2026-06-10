@@ -6,21 +6,11 @@ const {
   getLatestData,
   getDailyEnergy,
   getDashboardMetrics,
-  register,
   getCombinedData,
-  getAllPanelBeban,
-  login,
-  logout
+  getAllPanelBeban
 } = require('../controllers/dataController');
 
-// === CEK SESSION LOGIN ===
-router.get('/session', (req, res) => {
-  res.json({
-    loggedIn: req.session.loggedIn || false,
-    username: req.session.username || null,
-    role: req.session.role || null
-  });
-});
+// Session check moved to authRoutes.js
 
 // === DATA (Panel & Beban) ===
 router.post('/data', postData);
@@ -33,9 +23,6 @@ router.get('/data/full', getAllPanelBeban);
 // === DASHBOARD ===
 router.get('/dashboard/metrics', getDashboardMetrics);
 
-// === AUTH ===
-router.post('/register', register);
-router.post('/login', login);
-router.get('/logout', logout);
+// Authentication routes moved to authRoutes.js
 
 module.exports = router;

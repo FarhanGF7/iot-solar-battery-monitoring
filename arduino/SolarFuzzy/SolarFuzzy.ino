@@ -1,6 +1,5 @@
 #include <WiFi.h>
 #include "power_module.h"
-#include "tracker_module.h"
 
 // Konfigurasi WiFi
 const char* ssid = "NAMA_WIFI_KAMU";
@@ -37,16 +36,10 @@ void setup() {
   // Inisialisasi pembacaan sensor baterai (Tegangan, Arus, Suhu)
   setupPowerMonitor();
 
-  // Inisialisasi pembacaan sensor cahaya LDR (Hanya Live Visual)
-  setupTracker();
-
-  Serial.println("🚀 Sistem Evaluasi Baterai & Sensor Cahaya Siap Beroperasi!");
+  Serial.println("🚀 Sistem Evaluasi Baterai Siap Beroperasi!");
 }
 
 void loop() {
   // Mengeksekusi pengiriman data Baterai (Tiap 5 Menit ke Database)
   runPowerMonitor();
-  
-  // Mengeksekusi pengiriman data LDR (Tiap 2 Detik saat Siang ke Live Dashboard)
-  runTracker();
 }

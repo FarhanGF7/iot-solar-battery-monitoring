@@ -16,6 +16,14 @@ async function fetchLiveData() {
       return;
     }
 
+    const deviceStatus = document.getElementById('device-status');
+    if (deviceStatus) {
+      deviceStatus.textContent = 'Online 🟢';
+      deviceStatus.style.color = '#2ecc71';
+      deviceStatus.style.background = 'rgba(46,204,113,0.1)';
+      deviceStatus.style.borderColor = 'rgba(46,204,113,0.2)';
+    }
+
     const dayaPanel = data.panel.power || 0;
     const dayaBeban = data.beban.power || 0;
     
@@ -25,7 +33,8 @@ async function fetchLiveData() {
     const fuzzyScore = data.beban.fuzzy_score || 0;
 
     // 2. Update metric card standar
-    document.getElementById('power-produce').textContent = `${dayaPanel.toFixed(2)} W`;
+    document.getElementById('voltage-load').textContent = `${data.beban.voltage ? data.beban.voltage.toFixed(2) : '0.00'} V`;
+    document.getElementById('current-load').textContent = `${data.beban.current ? data.beban.current.toFixed(2) : '0.00'} A`;
     document.getElementById('power-load').textContent = `${dayaBeban.toFixed(2)} W`;
 
     // 3. Update Kartu Status Fuzzy & Indikator Warna
@@ -53,19 +62,24 @@ async function fetchLiveData() {
     const chart = window.lineChart;
 
     chart.data.labels.push(now);
-    chart.data.datasets[0].data.push(dayaPanel);
-    chart.data.datasets[1].data.push(dayaBeban);
+    chart.data.datasets[0].data.push(dayaBeban);
 
     if (chart.data.labels.length > 10) {
       chart.data.labels.shift();
       chart.data.datasets[0].data.shift();
-      chart.data.datasets[1].data.shift();
     }
 
     chart.update();
 
   } catch (err) {
     console.error('❌ Gagal ambil data:', err);
+    const deviceStatus = document.getElementById('device-status');
+    if (deviceStatus) {
+      deviceStatus.textContent = 'Offline 🔴';
+      deviceStatus.style.color = '#ff5252';
+      deviceStatus.style.background = 'rgba(255,82,82,0.1)';
+      deviceStatus.style.borderColor = 'rgba(255,82,82,0.2)';
+    }
   }
 }
 
@@ -77,10 +91,7 @@ async function loadDashboardMetrics() {
     const res = await fetch('/api/dashboard/metrics');
     const data = await res.json();
 
-    document.getElementById("energy-today").textContent = `${data.energy_today ?? 0} kWh`;
-    document.getElementById("peak").textContent = `${data.peak_power ?? 0} W`;
     document.getElementById("avg-load").textContent = `${data.avg_load ?? 0} W`;
-    document.getElementById("net-energy").textContent = `${data.net_energy ?? 0} kWh`;
   } catch (err) {
     console.error("Gagal ambil data dashboard:", err);
   }

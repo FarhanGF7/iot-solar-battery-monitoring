@@ -11,7 +11,7 @@
   <!-- TOPBAR -->
   <div class="topbar">
     <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
-    <span class="topbar-title">PLTS Monitoring</span>
+    <span class="topbar-title">FHN Lab - Evaluasi Baterai <span id="device-status" style="font-size: 0.8rem; font-weight: normal; margin-left: 15px; color: #ff5252; background: rgba(255,82,82,0.1); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(255,82,82,0.2);">Offline 🔴</span></span>
     <div class="topbar-login">
       <img src="assets/user.png" class="login-icon">
       <span id="loginUser">Login</span>
@@ -21,13 +21,12 @@
   <div class="main-layout">
     <!-- SIDEBAR -->
     <div class="sidebar hide" id="sidebar">
-      <a href="index.html"><img src="assets/web.png" class="icon-menu"> Ringkasan</a>
-      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik</a>
+      <a href="index.html" class="active"><img src="assets/web.png" class="icon-menu"> Dashboard Utama</a>
+      <a href="analitik.html"><img src="assets/analitics.png" class="icon-menu"> Analitik & Grafik</a>
+      <a href="log_data.html"><img src="assets/web.png" class="icon-menu"> Log Data Sensor</a>
+      <a href="wiper.html"><img src="assets/solar.png" class="icon-menu"> Wiper Panel</a>
       <a href="pengaturan.html"><img src="assets/settings.png" class="icon-menu"> Pengaturan</a>
-      <a href="solartracker.html"><img src="assets/solar.png" class="icon-menu"> Solar Tracker</a>
-      <a href="solartracker_analitik.html"><img src="assets/solar.png" class="icon-menu">Analitik Tracker</a>
-      <a href="wiper.html" class="active">Wiper Panel</a>
-      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu">Logout</a>
+      <a id="logoutLink" href="login.html"><img src="assets/keluar.png" class="icon-menu"> Keluar</a>
     </div>
 
     <!-- MAIN CONTENT -->
@@ -35,16 +34,16 @@
       <!-- METRICS -->
       <div class="analytics-metrics">
         <div class="card">
-          <h6>Daya Produksi</h6>
-          <h4 id="power-produce">-- W</h4>
+          <h6>Tegangan Baterai</h6>
+          <h4 id="voltage-load">-- V</h4>
         </div>
         <div class="card">
-          <h6>Daya Beban</h6>
+          <h6>Arus Baterai</h6>
+          <h4 id="current-load">-- A</h4>
+        </div>
+        <div class="card">
+          <h6>Daya Input Baterai</h6>
           <h4 id="power-load">-- W</h4>
-        </div>
-        <div class="card">
-          <h6>Energi Hari Ini</h6>
-          <h4 id="energy-today">-- kWh</h4>
         </div>
         <div class="card" id="card-status">
           <h6>Status Baterai (Fuzzy)</h6>
@@ -54,40 +53,13 @@
         </div>
       </div>
 
-      <!-- DIAGRAM + GRAFIK -->
-      <div class="diagram-section">
-        <!-- Diagram -->
-        <div class="diagram-container">
-          <h5 class="section-title-inside">Diagram Aliran Energi</h5>
-          <div class="diagram-box" id="solar-icon">
-            <div class="diagram-icon"><img src="assets/sun.png" class="icon-svg"></div>
-            <div class="diagram-label">Produksi</div>
-          </div>
-          <div class="diagram-box" id="battery-icon">
-            <div class="diagram-icon"><img src="assets/battery-charge.png" class="icon-svg"></div>
-            <div class="diagram-label">Baterai</div>
-          </div>
-          <div class="diagram-box" id="house-icon">
-            <div class="diagram-icon"><img src="assets/home.png" class="icon-svg"></div>
-            <div class="diagram-label">Beban</div>
-          </div>
-          <div class="diagram-box" id="panel-icon">
-            <div class="diagram-icon"><img src="assets/solar-panel.png" class="icon-svg"></div>
-            <div class="diagram-label">Panel</div>
-          </div>
-          <div class="connection-line" style="top: 30%; left: 24%; width: 20%;"></div>
-          <div class="connection-line reverse" style="top: 30%; left: 60%; width: 19%;"></div>
-          <div class="connection-line dot-vertical" style="top: 44%; left: 51%; height: 25%;"></div>
-        </div>
-
-        <!-- Grafik -->
-        <div class="graph-section">
+      <!-- GRAFIK -->
+      <div style="margin-top: 20px; width: 100%;">
+        <div class="graph-section" style="max-width: 100%; width: 100%; aspect-ratio: 21 / 9; margin: 0; box-sizing: border-box;">
           <div class="graph-header">
-            <span>Puncak Produksi: <b id="peak">-- W</b></span>
-            <span>Rata-rata Beban: <b id="avg-load">-- W</b></span>
-            <span>Energi Netto: <b id="net-energy">-- kWh</b></span>
+            <span>Rata-rata Daya Input: <b id="avg-load">-- W</b></span>
           </div>
-          <canvas id="lineChart" height="160"></canvas>
+          <canvas id="lineChart" height="90"></canvas>
         </div>
       </div>
     </div>

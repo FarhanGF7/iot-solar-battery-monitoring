@@ -11,7 +11,7 @@ const char* password = "X=5131w7";
 /* ===============================
    SERVER API
 ================================ */
-const char* serverUrl = "http://192.168.137.1:3000/api/wiper";
+const char* serverUrl = "http://192.168.1.4:3000/api/wiper";
 
 /* ===============================
    PIN CONFIG

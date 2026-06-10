@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrasi - PLTS Monitoring</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+  <div class="login-box">
+    <h2>Daftar Akun Baru</h2>
+    <form id="registerForm">
+      <input type="text" name="username" placeholder="Username Baru" required>
+      <input type="password" name="password" placeholder="Password Baru" required>
+      <select name="role" required>
+        <option value="" disabled selected>Pilih Role...</option>
+        <option value="user">User biasa</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button type="submit">Daftar</button>
+    </form>
+    <div id="registerNotif" style="margin-top: 1rem; text-align: center; font-size: 0.95rem; font-weight: 500;"></div>
+    <div class="note">Sudah punya akun? <a href="login.html">Login disini</a></div>
+  </div>
+
+  <script src="register.js"></script>
+</body>
+</html>

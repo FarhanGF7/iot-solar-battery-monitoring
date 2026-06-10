@@ -24,7 +24,8 @@ body {
   }
   
   .login-box input[type="text"],
-  .login-box input[type="password"] {
+  .login-box input[type="password"],
+  .login-box select {
     width: 100%;
     padding: 10px;
     margin-bottom: 1rem;

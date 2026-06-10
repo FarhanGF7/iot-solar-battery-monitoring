@@ -35,8 +35,16 @@ const dustChart = new Chart(dustCtx, {
 
 async function loadWiperData() {
   try {
-    const res = await fetch("http://localhost:3000/api/wiper");
+    const res = await fetch("/api/wiper");
     const rows = await res.json();
+
+    const deviceStatus = document.getElementById('device-status');
+    if (deviceStatus) {
+      deviceStatus.textContent = 'Online 🟢';
+      deviceStatus.style.color = '#2ecc71';
+      deviceStatus.style.background = 'rgba(46,204,113,0.1)';
+      deviceStatus.style.borderColor = 'rgba(46,204,113,0.2)';
+    }
 
     if (!Array.isArray(rows) || rows.length === 0) return;
 
@@ -60,6 +68,13 @@ async function loadWiperData() {
 
   } catch (err) {
     console.error("Gagal ambil data wiper:", err);
+    const deviceStatus = document.getElementById('device-status');
+    if (deviceStatus) {
+      deviceStatus.textContent = 'Offline 🔴';
+      deviceStatus.style.color = '#ff5252';
+      deviceStatus.style.background = 'rgba(255,82,82,0.1)';
+      deviceStatus.style.borderColor = 'rgba(255,82,82,0.2)';
+    }
   }
 }
 
@@ -69,5 +84,5 @@ setInterval(loadWiperData, 5000);
 
 // Tombol download CSV
 document.getElementById("downloadCSV").addEventListener("click", () => {
-  window.location.href = "http://localhost:3000/api/wiper/csv";
+  window.location.href = "/api/wiper/csv";
 });

@@ -7,6 +7,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const dataRoutes = require('./routes/dataRoutes');
+const authRoutes = require('./routes/authRoutes');
 const trackerRoutes = require('./routes/trackerroutes'); // 
 const wiperRoutes = require("./routes/wiperRoutes");
 
@@ -56,6 +57,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 
 // === Routing API lainnya ===
 app.use('/api', dataRoutes);
+app.use('/api', authRoutes);
 app.use("/api", wiperRoutes);
 // === Routing Solar Tracker ===
 // ESP32 tetap bisa POST ke /updateServo
@@ -74,6 +76,14 @@ app.get('/index.html', isAuthenticated, (req, res) => {
 
 app.get('/analitik.html', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/analitik.html'));
+});
+
+app.get('/log_data.html', isAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/log_data.html'));
+});
+
+app.get('/wiper.html', isAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/wiper.html'));
 });
 
 app.get('/solartracker.html', isAuthenticated, (req, res) => {

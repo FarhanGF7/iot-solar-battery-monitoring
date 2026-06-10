@@ -85,8 +85,11 @@ const postData = (req, res) => {
   // Perintah SQL untuk Panel (Tetap sama)
   const qPanel = `INSERT INTO panel (voltage, current, power) VALUES (?, ?, ?)`;
   
-  // Perintah SQL untuk Beban (Ditambah suhu dan hasil fuzzy)
-  const qBeban = `INSERT INTO beban (voltage, current, power, temperature, fuzzy_score, fuzzy_status) VALUES (?, ?, ?, ?, ?, ?)`;
+  // Perintah SQL untuk Beban (Tanpa hasil fuzzy)
+  const qBeban = `INSERT INTO beban (voltage, current, power, temperature) VALUES (?, ?, ?, ?)`;
+
+  // Perintah SQL untuk Tabel Baru Fuzzy
+  const qFuzzy = `INSERT INTO fuzzy_baterai (beban_id, fuzzy_score, fuzzy_status) VALUES (?, ?, ?)`;
 
   db.query(qPanel, [panel.voltage, panel.current, panel.power], (err) => {
     if (err) {
@@ -94,17 +97,27 @@ const postData = (req, res) => {
       return res.status(500).json({ message: "Gagal simpan data panel" });
     }
 
-    // Simpan data beban beserta suhu dan evaluasi fuzzy-nya
-    db.query(qBeban, [beban.voltage, beban.current, beban.power, suhuBaterai, hasilFuzzy.score, hasilFuzzy.status], (err2) => {
+    // Simpan data beban beserta suhu
+    db.query(qBeban, [beban.voltage, beban.current, beban.power, suhuBaterai], (err2, resultBeban) => {
       if (err2) {
         console.error("Gagal simpan BEBAN:", err2);
         return res.status(500).json({ message: "Gagal simpan data beban" });
       }
 
-      res.json({ 
-          message: "Data tersimpan & Dievaluasi!",
-          fuzzy_status: hasilFuzzy.status,
-          fuzzy_score: hasilFuzzy.score
+      const bebanId = resultBeban.insertId;
+
+      // Simpan data fuzzy ke tabel terpisah
+      db.query(qFuzzy, [bebanId, hasilFuzzy.score, hasilFuzzy.status], (err3) => {
+        if (err3) {
+          console.error("Gagal simpan FUZZY:", err3);
+          return res.status(500).json({ message: "Gagal simpan data fuzzy" });
+        }
+
+        res.json({ 
+            message: "Data tersimpan & Dievaluasi!",
+            fuzzy_status: hasilFuzzy.status,
+            fuzzy_score: hasilFuzzy.score
+        });
       });
     });
   });
@@ -123,10 +136,11 @@ const getLatestData = (req, res) => {
       b.current AS beban_current,
       b.power AS beban_power,
       b.temperature AS beban_temperature,
-      b.fuzzy_score,
-      b.fuzzy_status
+      f.fuzzy_score,
+      f.fuzzy_status
     FROM panel p
     JOIN beban b ON b.id = (SELECT MAX(id) FROM beban)
+    LEFT JOIN fuzzy_baterai f ON f.beban_id = b.id
     ORDER BY p.id DESC
     LIMIT 1
   `;
@@ -219,6 +233,18 @@ const getDashboardMetrics = (req, res) => {
       return res.status(500).json({ message: "Gagal ambil metrik" });
     }
 
+    if (results.length === 0 || !results[0]) {
+      return res.json({
+        energy_today: 0,
+        peak_power: 0,
+        efficiency: "0.0",
+        power_load: 0,
+        avg_load: 0,
+        battery_voltage: 12.0,
+        battery_health: 50
+      });
+    }
+
     const row = results[0];
 
     // SOC baterai
@@ -242,48 +268,7 @@ const getDashboardMetrics = (req, res) => {
   });
 };
 
-
-//
-// === USER AUTH ===
-//
-const register = (req, res) => {
-  const { username, password, role } = req.body;
-  const query = 'INSERT INTO users (username, password, role) VALUES (?, ?, ?)';
-
-  db.query(query, [username, password, role], (err) => {
-    if (err) {
-      console.error("Registrasi gagal:", err);
-      return res.status(500).json({ message: "Username sudah dipakai" });
-    }
-    res.status(201).json({ message: "Akun berhasil dibuat" });
-  });
-};
-
-const login = (req, res) => {
-  const { username, password } = req.body;
-  const query = 'SELECT * FROM users WHERE username = ? AND password = ?';
-
-  db.query(query, [username, password], (err, results) => {
-    if (err) {
-      console.error("Login error:", err);
-      return res.status(500).json({ message: "Server error" });
-    }
-    if (results.length > 0) {
-      req.session.loggedIn = true;
-      req.session.username = username;
-      req.session.role = results[0].role;
-      res.json({ success: true });
-    } else {
-      res.status(401).json({ message: "Username atau password salah" });
-    }
-  });
-};
-
-const logout = (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/login.html');
-  });
-};
+// Authentication functions (register, login, logout) moved to authController.js
 const getCombinedData = (req, res) => {
   const date = req.query.date;
 
@@ -297,11 +282,12 @@ const getCombinedData = (req, res) => {
       b.current AS beban_current,
       b.power AS beban_power,
       b.temperature AS beban_temperature, 
-      b.fuzzy_score, 
-      b.fuzzy_status 
+      f.fuzzy_score, 
+      f.fuzzy_status 
     FROM panel p
     JOIN beban b 
       ON ABS(TIMESTAMPDIFF(SECOND, p.created_at, b.created_at)) <= 1
+    LEFT JOIN fuzzy_baterai f ON f.beban_id = b.id
   `;
 
   if (date) {
@@ -328,11 +314,12 @@ const getAllPanelBeban = (req, res) => {
       b.current AS beban_current,
       b.power AS beban_power,
       b.temperature AS beban_temperature, 
-      b.fuzzy_score, 
-      b.fuzzy_status 
+      f.fuzzy_score, 
+      f.fuzzy_status 
     FROM panel p
     JOIN beban b 
       ON ABS(TIMESTAMPDIFF(SECOND, p.created_at, b.created_at)) <= 1
+    LEFT JOIN fuzzy_baterai f ON f.beban_id = b.id
     ORDER BY p.created_at ASC
   `;
 
@@ -352,9 +339,6 @@ module.exports = {
   getLatestData,
   getDailyEnergy,
   getDashboardMetrics,
-  register,
   getCombinedData,
-  getAllPanelBeban,
-  login,
-  logout
+  getAllPanelBeban
 };
