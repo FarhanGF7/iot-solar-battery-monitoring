@@ -113,6 +113,26 @@ const postData = (req, res) => {
           return res.status(500).json({ message: "Gagal simpan data fuzzy" });
         }
 
+        // Emit data realtime via Socket.IO
+        const io = req.app.get("io");
+        if (io) {
+          io.emit("latestData", {
+            panel: {
+              voltage: parseFloat(panel.voltage),
+              current: parseFloat(panel.current),
+              power: parseFloat(panel.power)
+            },
+            beban: {
+              voltage: parseFloat(beban.voltage),
+              current: parseFloat(beban.current),
+              power: parseFloat(beban.power),
+              temperature: parseFloat(suhuBaterai),
+              fuzzy_score: parseFloat(hasilFuzzy.score),
+              fuzzy_status: hasilFuzzy.status
+            }
+          });
+        }
+
         res.json({ 
             message: "Data tersimpan & Dievaluasi!",
             fuzzy_status: hasilFuzzy.status,
