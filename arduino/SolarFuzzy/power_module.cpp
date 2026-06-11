@@ -14,7 +14,7 @@ DallasTemperature sensors(&oneWire);
 // ===================================
 
 // =====================================================
-//  Variabel waktu dari file utama
+//  Variabel waktu 
 // =====================================================
 extern const char* ntpServer;
 extern const long gmtOffset_sec;
@@ -24,13 +24,14 @@ extern const int daylightOffset_sec;
 //  INA219
 // =====================================================
 Adafruit_INA219 ina219_panel(0x40);
-Adafruit_INA219 ina219_beban(0x41);
+Adafruit_INA219 ina219_baterai(0x41);
 
 // =====================================================
 //  Server endpoint
 // =====================================================
-String powerServer = "http://192.168.1.8:3000/api/data";
-int lastMinuteSent = -1;
+String powerServer = "http://192.168.1.4:3000/api/data";
+unsigned long lastSentTime = 0;
+const unsigned long sendInterval = 300000; // 5 menit (300000 ms)
 
 // =====================================================
 //  Buffer rata-rata (Sampel diambil setiap 5 detik)
@@ -39,7 +40,7 @@ unsigned long lastSample = 0;
 const unsigned long sampleInterval = 5000; // 5 detik
 
 float sumPanelV = 0, sumPanelC = 0, sumPanelP = 0;
-float sumBebanV = 0, sumBebanC = 0, sumBebanP = 0;
+float sumBateraiV = 0, sumBateraiC = 0, sumBateraiP = 0;
 float sumSuhu = 0;
 
 int sampleCount = 0;
@@ -53,19 +54,21 @@ void setupPowerMonitor() {
   Serial.println("\n=== ⚙️ Inisialisasi Power Monitor ===");
 
   ina219_panel.begin();
-  ina219_beban.begin();
+  ina219_baterai.begin();
 
   // === KALIBRASI (Untuk sensor INA219 max 32V, 2A) ===
   ina219_panel.setCalibration_32V_2A();   
-  ina219_beban.setCalibration_32V_2A();   
+  ina219_baterai.setCalibration_32V_2A();   
   
   sensors.begin(); // Mulai sensor suhu
 
-  Serial.println("✅ INA219 PANEL, BEBAN, & SENSOR SUHU siap");
+  Serial.println("✅ INA219 PANEL, BATERAI, & SENSOR SUHU siap");
 
   // Sinkronisasi Waktu NTP
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   Serial.println("🌐 NTP tersinkron untuk modul daya");
+
+  lastSentTime = millis(); // Inisialisasi waktu awal pengiriman
 }
 
 // =====================================================
@@ -79,29 +82,31 @@ void kirimDataPLTS() {
   float panelC = sumPanelC / sampleCount;
   float panelP = sumPanelP / sampleCount;
 
-  float bebanV = sumBebanV / sampleCount;
-  float bebanC = sumBebanC / sampleCount;
-  float bebanP = sumBebanP / sampleCount;
+  float bateraiV = sumBateraiV / sampleCount;
+  float bateraiC = sumBateraiC / sampleCount;
+  float bateraiP = sumBateraiP / sampleCount;
 
   float rataSuhu = sumSuhu / sampleCount;
 
   // Reset semua buffer akumulasi ke 0 untuk siklus 5 menit berikutnya
   sumPanelV = sumPanelC = sumPanelP = 0;
-  sumBebanV = sumBebanC = sumBebanP = 0;
+  sumBateraiV = sumBateraiC = sumBateraiP = 0;
   sumSuhu = 0;
   sampleCount = 0;
 
   struct tm timeinfo;
-  getLocalTime(&timeinfo);
-
   Serial.println("======================================");
-  Serial.printf("🕒 %02d:%02d | DATA RATA-RATA 5 MENIT TERKIRIM\n",
-                timeinfo.tm_hour, timeinfo.tm_min);
+  if (getLocalTime(&timeinfo)) {
+    Serial.printf("🕒 %02d:%02d | DATA RATA-RATA 5 MENIT TERKIRIM\n",
+                  timeinfo.tm_hour, timeinfo.tm_min);
+  } else {
+    Serial.println("🕒 ??:?? | DATA RATA-RATA 5 MENIT TERKIRIM");
+  }
   Serial.printf("☀️ PANEL  : V=%.2f I=%.3f P=%.2f W\n",
                 panelV, panelC, panelP);
   Serial.printf("🔋 ENERGI : %.2f Wh\n", energyPanelWh);
-  Serial.printf("💡 BEBAN  : V=%.2f I=%.3f P=%.2f W\n",
-                bebanV, bebanC, bebanP);
+  Serial.printf("🔋 BATERAI : V=%.2f I=%.3f P=%.2f W\n",
+                bateraiV, bateraiC, bateraiP);
   Serial.printf("🌡️ SUHU   : SUHU=%.2f °C\n",
                 rataSuhu);
   Serial.println("======================================");
@@ -111,9 +116,9 @@ void kirimDataPLTS() {
                     ",\"current\":" + panelC +
                     ",\"power\":" + panelP +
                     ",\"energy\":" + energyPanelWh +
-                    "},\"beban\":{\"voltage\":" + bebanV +
-                    ",\"current\":" + bebanC +
-                    ",\"power\":" + bebanP + 
+                    "},\"baterai\":{\"voltage\":" + bateraiV +
+                    ",\"current\":" + bateraiC +
+                    ",\"power\":" + bateraiP + 
                     ",\"temperature\":" + rataSuhu + "}}";
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -157,12 +162,11 @@ void runPowerMonitor() {
     // Hitung akumulasi energi panel (Wh)
     energyPanelWh += panelP * (sampleInterval / 3600000.0);
 
-    // ===== PEMBACAAN BEBAN (BATERAI) =====
-    float bebanV = ina219_beban.getBusVoltage_V();
-    float bebanC = ina219_beban.getCurrent_mA() / 1000.0;
+    // ===== PEMBACAAN BATERAI =====
+    float bateraiV = ina219_baterai.getBusVoltage_V();
+    float bateraiC = ina219_baterai.getCurrent_mA() / 1000.0;
     
-    if (bebanC < 0) bebanC = 0;
-    float bebanP = bebanV * bebanC;
+    float bateraiP = bateraiV * bateraiC;
 
     // ===== PEMBACAAN SUHU =====
     sensors.requestTemperatures(); 
@@ -175,32 +179,21 @@ void runPowerMonitor() {
     sumPanelC += panelC;
     sumPanelP += panelP;
 
-    sumBebanV += bebanV;
-    sumBebanC += bebanC;
-    sumBebanP += bebanP;
+    sumBateraiV += bateraiV;
+    sumBateraiC += bateraiC;
+    sumBateraiP += bateraiP;
 
     sumSuhu += suhuAki;
     sampleCount++;
 
     // Tampilkan log sampling setiap 5 detik di Serial Monitor
-    Serial.printf("📥 PANEL V=%.2f I=%.3f P=%.2fW | BEBAN V=%.2f I=%.3f P=%.2fW | SUHU=%.2f°C\n",
-                  panelV, panelC, panelP, bebanV, bebanC, bebanP, suhuAki);
+    Serial.printf("📥 PANEL V=%.2f I=%.3f P=%.2fW | BATERAI V=%.2f I=%.3f P=%.2fW | SUHU=%.2f°C\n",
+                  panelV, panelC, panelP, bateraiV, bateraiC, bateraiP, suhuAki);
   }
 
-  // ===== LOGIKA WAKTU REAL-TIME (PENGIRIMAN 5 MENIT) =====
-  struct tm timeinfo;
-  if (getLocalTime(&timeinfo)) { 
-    int minute = timeinfo.tm_min;
-
-    // Gerbang pengiriman terbuka otomatis di menit :00, :05, :10, :15, dst.
-    if (minute % 5 == 0 && minute != lastMinuteSent) {
-      kirimDataPLTS(); 
-      lastMinuteSent = minute; 
-    }
-
-    // Membuka kembali kunci ketika menit sudah bergeser
-    if (minute % 5 != 0) {
-      lastMinuteSent = -1;
-    }
+  // ===== LOGIKA PENGIRIMAN DATA SETIAP 5 MENIT =====
+  if (now - lastSentTime >= sendInterval) {
+    kirimDataPLTS(); 
+    lastSentTime = now; 
   }
 }

@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 
-/* ========== GRAFIK PRODUKSI vs BEBAN ========== */
+/* ========== GRAFIK PRODUKSI vs BATERAI ========== */
 /* ========== GRAFIK GABUNGAN (POWER, SUHU, FUZZY) ========== */
 async function loadPowerChart(filterDate = null) {
   const ctxPower = document.getElementById('powerChart').getContext('2d');
@@ -35,10 +35,10 @@ async function loadPowerChart(filterDate = null) {
 
       const labels = records.map(r => new Date(r.timestamp).toLocaleTimeString());
       
-      const beban = records.map(r => r.beban_power || 0);
+      const baterai = records.map(r => r.baterai_power || 0);
       
       // Data Fuzzy Baru yang diambil dari backend
-      const suhu = records.map(r => r.beban_temperature || 0);
+      const suhu = records.map(r => r.baterai_temperature || 0);
       const fuzzyScore = records.map(r => r.fuzzy_score || 0);
 
       // 1. Chart Daya Input Baterai
@@ -48,7 +48,7 @@ async function loadPowerChart(filterDate = null) {
           data: {
               labels,
               datasets: [
-                  { label: 'Daya Input Baterai (W)', data: beban, borderColor: 'cyan', borderWidth: 2, fill: false }
+                  { label: 'Daya Input Baterai (W)', data: baterai, borderColor: 'cyan', borderWidth: 2, fill: false }
               ]
           },
           options: { responsive: true, scales: { y: { beginAtZero: true } } }
@@ -120,8 +120,8 @@ async function loadDashboardMetrics() {
         const dataLatest = await resLatest.json();
 
         document.getElementById("avg-load-power").textContent = (dataMetrics.avg_load ?? 0) + " W";
-        document.getElementById("last-temp").textContent = (dataLatest.beban.temperature ?? 0) + " °C";
-        document.getElementById("last-fuzzy").textContent = (dataLatest.beban.fuzzy_status ?? "--") + ` (${dataLatest.beban.fuzzy_score ?? 0})`;
+        document.getElementById("last-temp").textContent = (dataLatest.baterai.temperature ?? 0) + " °C";
+        document.getElementById("last-fuzzy").textContent = (dataLatest.baterai.fuzzy_status ?? "--") + ` (${dataLatest.baterai.fuzzy_score ?? 0})`;
 
     } catch (err) {
         console.error("Gagal ambil dashboard metrics:", err);
@@ -129,13 +129,13 @@ async function loadDashboardMetrics() {
 }
 
 
-/* ========== EXPORT CSV (Panel + Beban + Suhu + Fuzzy) ========== */
+/* ========== EXPORT CSV (Panel + Baterai + Suhu + Fuzzy) ========== */
 const exportBtn = document.getElementById("exportBtn");
 
 if (exportBtn) {
   exportBtn.addEventListener("click", async () => {
     try {
-      const res = await fetch("/api/data/full"); // Route getAllPanelBeban di backend
+      const res = await fetch("/api/data/full"); // Route getAllPanelBaterai di backend
       const records = await res.json();
 
       // Tambahkan header CSV baru untuk Suhu, Fuzzy Score, dan Status
@@ -152,18 +152,18 @@ if (exportBtn) {
         const d = new Date(r.timestamp);
         const timeStr = `${d.toLocaleDateString("id-ID")} ${d.toLocaleTimeString("id-ID")}`;
 
-        const bebanV = r.beban_voltage ?? "";
-        const bebanI = r.beban_current ?? "";
-        const bebanP = r.beban_power ?? "";
+        const bateraiV = r.baterai_voltage ?? "";
+        const bateraiI = r.baterai_current ?? "";
+        const bateraiP = r.baterai_power ?? "";
         
         // Ambil data fuzzy
-        const suhu = r.beban_temperature ?? "";
+        const suhu = r.baterai_temperature ?? "";
         const fScore = r.fuzzy_score ?? "";
         const fStatus = r.fuzzy_status ?? "";
 
         const row = [
           csvEscape(timeStr),
-          csvEscape(bebanV), csvEscape(bebanI), csvEscape(bebanP),
+          csvEscape(bateraiV), csvEscape(bateraiI), csvEscape(bateraiP),
           csvEscape(suhu), csvEscape(fScore), csvEscape(fStatus)
         ].join(",");
 

@@ -5,8 +5,8 @@
 /* ===============================
    WIFI CONFIG
 ================================ */
-const char* ssid = "HKMLYSF";
-const char* password = "X=5131w7";
+const char* ssid = "FarhanHS";
+const char* password = "Natural123";
 
 /* ===============================
    SERVER API

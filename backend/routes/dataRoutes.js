@@ -7,17 +7,17 @@ const {
   getDailyEnergy,
   getDashboardMetrics,
   getCombinedData,
-  getAllPanelBeban
+  getAllPanelBaterai
 } = require('../controllers/dataController');
 
 // Session check moved to authRoutes.js
 
-// === DATA (Panel & Beban) ===
+// === DATA (Panel & Baterai) ===
 router.post('/data', postData);
 router.get('/data/latest', getLatestData);
 router.get('/history', getDailyEnergy);
 router.get('/data/combined', getCombinedData);
-router.get('/data/full', getAllPanelBeban);
+router.get('/data/full', getAllPanelBaterai);
 
 
 // === DASHBOARD ===

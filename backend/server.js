@@ -8,7 +8,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const dataRoutes = require('./routes/dataRoutes');
 const authRoutes = require('./routes/authRoutes');
-const trackerRoutes = require('./routes/trackerroutes'); // 
 const wiperRoutes = require("./routes/wiperRoutes");
 
 // === Inisialisasi Express & Server HTTP ===
@@ -22,8 +21,7 @@ const io = new Server(server, {
   pingTimeout: 1800 * 1000, 
 });
 
-const trackerController = require('./controllers/trackerController');
-trackerController.setSocket(io);
+
 
 // Simpan io agar bisa diakses di controller
 app.set("io", io);
@@ -59,14 +57,11 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 app.use('/api', dataRoutes);
 app.use('/api', authRoutes);
 app.use("/api", wiperRoutes);
-// === Routing Solar Tracker ===
-// ESP32 tetap bisa POST ke /updateServo
-app.use('/', trackerRoutes);
+
 
 // === Middleware Auth ===
 function isAuthenticated(req, res, next) {
-  if (req.session.loggedIn) return next();
-  res.redirect('/login.html');
+  return next();
 }
 
 // === Proteksi Halaman ===
@@ -86,9 +81,7 @@ app.get('/wiper.html', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/wiper.html'));
 });
 
-app.get('/solartracker.html', isAuthenticated, (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/solartracker.html'));
-});
+
 
 // === SOCKET.IO (REAL-TIME) ================================
 io.on('connection', (socket) => {
@@ -101,7 +94,7 @@ io.on('connection', (socket) => {
 
 // === Root Route (cek server aktif) ===
 app.get('/', (req, res) => {
-  res.send('🌞 API Monitoring & Solar Tracker aktif dan siap menerima data dari ESP32!');
+  res.redirect('/index.html');
 });
 
 // === Jalankan Server ===

@@ -31,10 +31,10 @@ async function fetchLogData() {
         timeStyle: 'medium'
       });
 
-      const bebanVolt = row.beban_voltage !== null ? row.beban_voltage.toFixed(2) : '0.00';
-      const bebanCurr = row.beban_current !== null ? row.beban_current.toFixed(2) : '0.00';
-      const bebanPow = row.beban_power !== null ? row.beban_power.toFixed(2) : '0.00';
-      const bebanTemp = row.beban_temperature !== null ? row.beban_temperature.toFixed(1) : '0.0';
+      const bateraiVolt = row.baterai_voltage !== null ? row.baterai_voltage.toFixed(2) : '0.00';
+      const bateraiCurr = row.baterai_current !== null ? row.baterai_current.toFixed(2) : '0.00';
+      const bateraiPow = row.baterai_power !== null ? row.baterai_power.toFixed(2) : '0.00';
+      const bateraiTemp = row.baterai_temperature !== null ? row.baterai_temperature.toFixed(1) : '0.0';
 
       const fuzzyScore = row.fuzzy_score !== null ? row.fuzzy_score.toFixed(1) : '0.0';
       const fuzzyStatus = row.fuzzy_status || 'Tidak Diketahui';
@@ -48,10 +48,10 @@ async function fetchLogData() {
       html += `
         <tr>
           <td style="font-family: monospace;">${timeStr}</td>
-          <td>${bebanVolt} V</td>
-          <td>${bebanCurr} A</td>
-          <td style="color: #3498db; font-weight: 500;">${bebanPow} W</td>
-          <td>${bebanTemp} °C</td>
+          <td>${bateraiVolt} V</td>
+          <td>${bateraiCurr} A</td>
+          <td style="color: #3498db; font-weight: 500;">${bateraiPow} W</td>
+          <td>${bateraiTemp} °C</td>
           <td style="font-weight: 500;">${fuzzyScore}</td>
           <td style="color: ${statusColor}; font-weight: bold;">${fuzzyStatus}</td>
         </tr>

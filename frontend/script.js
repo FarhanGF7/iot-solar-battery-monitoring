@@ -4,11 +4,11 @@ function toggleSidebar() {
 }
 
 // =====================================================
-//  FETCH DATA LIVE (Panel & Beban)
+//  FETCH DATA LIVE (Panel & Baterai)
 // =====================================================
 // Function to update the dashboard UI with new data
 function updateDashboardUI(data) {
-  if (!data.panel || !data.beban) {
+  if (!data.panel || !data.baterai) {
     console.warn('⚠️ Data tidak lengkap:', data);
     return;
   }
@@ -22,17 +22,17 @@ function updateDashboardUI(data) {
   }
 
   const dayaPanel = data.panel.power || 0;
-  const dayaBeban = data.beban.power || 0;
+  const dayaBaterai = data.baterai.power || 0;
   
   // 1. Tangkap Data Fuzzy dari Backend
-  const suhuBaterai = data.beban.temperature || 0;
-  const fuzzyStatus = data.beban.fuzzy_status || "Menunggu...";
-  const fuzzyScore = data.beban.fuzzy_score || 0;
+  const suhuBaterai = data.baterai.temperature || 0;
+  const fuzzyStatus = data.baterai.fuzzy_status || "Menunggu...";
+  const fuzzyScore = data.baterai.fuzzy_score || 0;
 
   // 2. Update metric card standar
-  document.getElementById('voltage-load').textContent = `${data.beban.voltage ? data.beban.voltage.toFixed(2) : '0.00'} V`;
-  document.getElementById('current-load').textContent = `${data.beban.current ? data.beban.current.toFixed(2) : '0.00'} A`;
-  document.getElementById('power-load').textContent = `${dayaBeban.toFixed(2)} W`;
+  document.getElementById('voltage-load').textContent = `${data.baterai.voltage ? data.baterai.voltage.toFixed(2) : '0.00'} V`;
+  document.getElementById('current-load').textContent = `${data.baterai.current ? data.baterai.current.toFixed(2) : '0.00'} A`;
+  document.getElementById('power-load').textContent = `${dayaBaterai.toFixed(2)} W`;
 
   // 3. Update Kartu Status Fuzzy & Indikator Warna
   const statusEl = document.getElementById('battery-status');
@@ -60,7 +60,7 @@ function updateDashboardUI(data) {
 
   if (chart) {
     chart.data.labels.push(now);
-    chart.data.datasets[0].data.push(dayaBeban);
+    chart.data.datasets[0].data.push(dayaBaterai);
 
     if (chart.data.labels.length > 10) {
       chart.data.labels.shift();

@@ -2,8 +2,8 @@
 #include "power_module.h"
 
 // Konfigurasi WiFi
-const char* ssid = "NAMA_WIFI_KAMU";
-const char* password = "PASSWORD_WIFI_KAMU";
+const char* ssid = "FarhanHS";
+const char* password = "Natural123";
 
 // Konfigurasi Waktu (WITA - Samarinda)
 const char* ntpServer = "pool.ntp.org";

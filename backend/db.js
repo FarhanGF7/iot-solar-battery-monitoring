@@ -5,13 +5,13 @@ const pool = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: '',
-  database: 'panel_monitor',
+  database: 'panel_monitoring',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
-// Untuk async/await (trackerController)
+// Untuk async/await
 const promisePool = pool.promise();
 
 // Untuk callback (dataController)
