@@ -32,7 +32,7 @@ function hitungFuzzyBaterai(v, i, t) {
     let t_normal = (t <= 35) ? 1 : (t >= 40 ? 0 : (40 - t) / (40 - 35));
     let t_hangat = (t <= 35 || t >= 50) ? 0 : (t > 35 && t <= 40 ? (t - 35) / (40 - 35) : (t >= 45 && t < 50 ? (50 - t) / (50 - 45) : 1));
     let t_panas  = (t <= 45) ? 0 : (t >= 50 ? 1 : (t - 45) / (50 - 45));
-
+  
     // 4. EVALUASI ATURAN (Rule Base & Inferensi)
     let rules = [];
 
@@ -71,9 +71,9 @@ function hitungFuzzyBaterai(v, i, t) {
 // === FUNGSI POST DATA ===
 // 
 const postData = (req, res) => {
-  const { panel, baterai } = req.body;
+  const { baterai } = req.body;
 
-  if (!panel || !baterai) {
+  if (!baterai) {
     return res.status(400).json({ message: "Data tidak lengkap" });
   }
 
@@ -82,62 +82,47 @@ const postData = (req, res) => {
   const suhuBaterai = baterai.temperature || 30.0; 
   const hasilFuzzy = hitungFuzzyBaterai(baterai.voltage, baterai.current, suhuBaterai);
 
-  // Perintah SQL untuk Panel 
-  const qPanel = `INSERT INTO panel (voltage, current, power) VALUES (?, ?, ?)`;
-  
   // Perintah SQL untuk Baterai 
   const qBaterai = `INSERT INTO baterai (voltage, current, power, temperature) VALUES (?, ?, ?, ?)`;
 
   // Perintah SQL untuk Tabel Fuzzy
   const qFuzzy = `INSERT INTO fuzzy_baterai (baterai_id, fuzzy_score, fuzzy_status) VALUES (?, ?, ?)`;
 
-  db.query(qPanel, [panel.voltage, panel.current, panel.power], (err) => {
-    if (err) {
-      console.error("Gagal simpan PANEL:", err);
-      return res.status(500).json({ message: "Gagal simpan data panel" });
+  // Simpan data baterai beserta suhu
+  db.query(qBaterai, [baterai.voltage, baterai.current, baterai.power, suhuBaterai], (err2, resultBaterai) => {
+    if (err2) {
+      console.error("Gagal simpan BATERAI:", err2);
+      return res.status(500).json({ message: "Gagal simpan data baterai" });
     }
 
-    // Simpan data baterai beserta suhu
-    db.query(qBaterai, [baterai.voltage, baterai.current, baterai.power, suhuBaterai], (err2, resultBaterai) => {
-      if (err2) {
-        console.error("Gagal simpan BATERAI:", err2);
-        return res.status(500).json({ message: "Gagal simpan data baterai" });
+    const bateraiId = resultBaterai.insertId;
+
+    // Simpan data fuzzy ke database
+    db.query(qFuzzy, [bateraiId, hasilFuzzy.score, hasilFuzzy.status], (err3) => {
+      if (err3) {
+        console.error("Gagal simpan FUZZY:", err3);
+        return res.status(500).json({ message: "Gagal simpan data fuzzy" });
       }
 
-      const bateraiId = resultBaterai.insertId;
-
-      // Simpan data fuzzy ke database
-      db.query(qFuzzy, [bateraiId, hasilFuzzy.score, hasilFuzzy.status], (err3) => {
-        if (err3) {
-          console.error("Gagal simpan FUZZY:", err3);
-          return res.status(500).json({ message: "Gagal simpan data fuzzy" });
-        }
-
-        // Emit data realtime via Socket.IO
-        const io = req.app.get("io");
-        if (io) {
-          io.emit("latestData", {
-            panel: {
-              voltage: parseFloat(panel.voltage),
-              current: parseFloat(panel.current),
-              power: parseFloat(panel.power)
-            },
-            baterai: {
-              voltage: parseFloat(baterai.voltage),
-              current: parseFloat(baterai.current),
-              power: parseFloat(baterai.power),
-              temperature: parseFloat(suhuBaterai),
-              fuzzy_score: parseFloat(hasilFuzzy.score),
-              fuzzy_status: hasilFuzzy.status
-            }
-          });
-        }
-
-        res.json({ 
-            message: "Data tersimpan & Dievaluasi!",
-            fuzzy_status: hasilFuzzy.status,
-            fuzzy_score: hasilFuzzy.score
+      // Emit data realtime via Socket.IO
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("latestData", {
+          baterai: {
+            voltage: parseFloat(baterai.voltage),
+            current: parseFloat(baterai.current),
+            power: parseFloat(baterai.power),
+            temperature: parseFloat(suhuBaterai),
+            fuzzy_score: parseFloat(hasilFuzzy.score),
+            fuzzy_status: hasilFuzzy.status
+          }
         });
+      }
+
+      res.json({ 
+          message: "Data tersimpan & Dievaluasi!",
+          fuzzy_status: hasilFuzzy.status,
+          fuzzy_score: hasilFuzzy.score
       });
     });
   });
@@ -149,19 +134,15 @@ const postData = (req, res) => {
 const getLatestData = (req, res) => {
   const query = `
     SELECT 
-      p.voltage AS panel_voltage,
-      p.current AS panel_current,
-      p.power AS panel_power,
       b.voltage AS baterai_voltage,
       b.current AS baterai_current,
       b.power AS baterai_power,
       b.temperature AS baterai_temperature,
       f.fuzzy_score,
       f.fuzzy_status
-    FROM panel p
-    JOIN baterai b ON b.id = (SELECT MAX(id) FROM baterai)
+    FROM baterai b
     LEFT JOIN fuzzy_baterai f ON f.baterai_id = b.id
-    ORDER BY p.id DESC
+    ORDER BY b.id DESC
     LIMIT 1
   `;
 
@@ -176,11 +157,6 @@ const getLatestData = (req, res) => {
     }
 
     res.json({
-      panel: {
-        voltage: results[0].panel_voltage,
-        current: results[0].panel_current,
-        power: results[0].panel_power
-      },
       baterai: {
         voltage: results[0].baterai_voltage,
         current: results[0].baterai_current,
@@ -201,7 +177,7 @@ const getDailyEnergy = (req, res) => {
     SELECT 
       DATE_FORMAT(created_at, '%Y-%m-%d') AS date,
       ROUND(SUM(power * 1800 / 3600000), 4) AS energy_kWh
-    FROM panel
+    FROM baterai
     GROUP BY DATE(created_at)
     ORDER BY date DESC
     LIMIT 7
@@ -226,24 +202,21 @@ const INTERVAL = 1800;     // interval data 30 menit
 const getDashboardMetrics = (req, res) => {
   const query = `
   SELECT 
-    p.voltage AS batt_voltage,
-    p.power AS power_produce,
+    b.voltage AS batt_voltage,
     b.power AS power_load,
     (
       SELECT ROUND(SUM(power * ${INTERVAL} / 3600000), 4)
-      FROM panel 
+      FROM baterai 
       WHERE DATE(created_at) = CURDATE()
     ) AS energy_today,
     (
       SELECT ROUND(MAX(power), 2)
-      FROM panel
+      FROM baterai
       WHERE DATE(created_at) = CURDATE()
     ) AS peak_power,
     ROUND(b.power, 2) AS avg_load
-  FROM panel p
-  JOIN baterai b 
-    ON p.id = (SELECT MAX(id) FROM panel)
-   AND b.id = (SELECT MAX(id) FROM baterai)
+  FROM baterai b
+  WHERE b.id = (SELECT MAX(id) FROM baterai)
   LIMIT 1
 `;
 
@@ -271,10 +244,8 @@ const getDashboardMetrics = (req, res) => {
     const battery_voltage = row.batt_voltage || 12.0;
     const battery_health = voltageToSoc(battery_voltage);
 
-    // Efisiensi panel (aktual vs WP)
-    const efficiency = row.power_produce > 0
-      ? (row.power_produce / PANEL_WP) * 100
-      : 0;
+    // Efisiensi diset 0 karena data panel ditiadakan
+    const efficiency = 0;
 
     res.json({
       energy_today: row.energy_today,
@@ -294,26 +265,21 @@ const getCombinedData = (req, res) => {
 
   let query = `
     SELECT 
-      p.created_at AS timestamp,
-      p.voltage AS panel_voltage,
-      p.current AS panel_current,
-      p.power AS panel_power,
+      b.created_at AS timestamp,
       b.voltage AS baterai_voltage,
       b.current AS baterai_current,
       b.power AS baterai_power,
       b.temperature AS baterai_temperature, 
       f.fuzzy_score, 
       f.fuzzy_status 
-    FROM panel p
-    JOIN baterai b 
-      ON ABS(TIMESTAMPDIFF(SECOND, p.created_at, b.created_at)) <= 1
+    FROM baterai b
     LEFT JOIN fuzzy_baterai f ON f.baterai_id = b.id
   `;
 
   if (date) {
-    query += ` WHERE DATE(p.created_at) = ? ORDER BY p.created_at ASC`;
+    query += ` WHERE DATE(b.created_at) = ? ORDER BY b.created_at ASC`;
   } else {
-    query += ` ORDER BY p.created_at ASC`;
+    query += ` ORDER BY b.created_at ASC`;
   }
 
   db.query(query, [date], (err, results) => {
@@ -326,26 +292,21 @@ const getCombinedData = (req, res) => {
 const getAllPanelBaterai = (req, res) => {
   const q = `
     SELECT 
-      p.created_at AS timestamp,
-      p.voltage AS panel_voltage,
-      p.current AS panel_current,
-      p.power AS panel_power,
+      b.created_at AS timestamp,
       b.voltage AS baterai_voltage,
       b.current AS baterai_current,
       b.power AS baterai_power,
       b.temperature AS baterai_temperature, 
       f.fuzzy_score, 
       f.fuzzy_status 
-    FROM panel p
-    JOIN baterai b 
-      ON ABS(TIMESTAMPDIFF(SECOND, p.created_at, b.created_at)) <= 1
+    FROM baterai b
     LEFT JOIN fuzzy_baterai f ON f.baterai_id = b.id
-    ORDER BY p.created_at ASC
+    ORDER BY b.created_at ASC
   `;
 
   db.query(q, (err, results) => {
     if (err) {
-      console.error("Gagal ambil data panel+baterai:", err);
+      console.error("Gagal ambil data baterai:", err);
       return res.status(500).json({ message: "Gagal ambil data" });
     }
 

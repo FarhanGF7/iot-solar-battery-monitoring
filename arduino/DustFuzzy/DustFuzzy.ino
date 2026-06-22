@@ -11,7 +11,7 @@ const char* password = "Natural123";
 /* ===============================
    SERVER API
 ================================ */
-const char* serverUrl = "http://192.168.1.4:3000/api/wiper";
+const char* serverUrl = "http://192.168.1.6:3000/api/wiper";
 
 /* ===============================
    PIN CONFIG
@@ -52,9 +52,19 @@ void setup() {
   pinMode(DUST_LED_PIN, OUTPUT);
   digitalWrite(DUST_LED_PIN, HIGH);
 
-  // Attach servo
-  servo1.attach(SERVO1_PIN);
-  servo2.attach(SERVO2_PIN);
+  // Alokasi timer PWM untuk ESP32 agar tidak konflik
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+
+  // Set frekuensi PWM ke 50Hz (standar servo)
+  servo1.setPeriodHertz(50);
+  servo2.setPeriodHertz(50);
+
+  // Attach servo dengan range pulsa standard SG90 (500us - 2400us)
+  servo1.attach(SERVO1_PIN, 500, 2400);
+  servo2.attach(SERVO2_PIN, 500, 2400);
 
   // Posisi awal servo
   servo1.write(servo1MaxAngle);
@@ -80,61 +90,30 @@ void loop() {
   sendToServer(dust);
 
   // ==================================
-  // LOGIKA PEMBERSIHAN
+  // LOGIKA PEMBERSIHAN (FUZZY LOGIC)
   // ==================================
   if (!isCleaning) {
+    // Jalankan mesin fuzzy logic untuk menentukan jumlah siklus sapuan wiper
+    int cycles = hitungFuzzyWiper(dust);
 
-    // =========================
-    // DEBU RENDAH
-    // =========================
-    if (dust < 20) {
-
-    Serial.println("✅ Debu rendah → Wiper OFF");
-
-  }
-
-    // =========================
-    // DEBU SEDANG
-    // =========================
-    else if (dust >= 20 && dust < 30) {
-
+    if (cycles == 0) {
+      Serial.println("✅ Status: Bersih/Debu Rendah → Wiper OFF");
+    } 
+    else {
       isCleaning = true;
+      Serial.printf("🧹 Status: Debu Terdeteksi → Wiper Aktif (%d Siklus)\n", cycles);
 
-      Serial.println("⚠️ Debu sedang → Wiper 1x");
-
-      runServo(servo1, 1);
-      delay(300);
-
-      runServo(servo2, 1);
-      delay(300);
-
-      Serial.println("✅ Pembersihan selesai");
-
-      isCleaning = false;
-    }
-
-    // =========================
-    // DEBU TINGGI
-    // =========================
-    else if (dust >= 30) {
-
-      isCleaning = true;
-
-      Serial.println("🚨 Debu tinggi → Wiper 6x");
-
-      for (int i = 0; i < 6; i++) {
-
-        Serial.printf("🔄 Siklus ke-%d\n", i + 1);
+      for (int i = 0; i < cycles; i++) {
+        Serial.printf("🔄 Siklus ke-%d dari %d\n", i + 1, cycles);
 
         runServo(servo1, 1);
         delay(200);
 
-        runServo(servo2, 1);
+        runServo(servo2, 2);
         delay(200);
       }
 
-      Serial.println("✅ Pembersihan berat selesai");
-
+      Serial.println("✅ Pembersihan selesai");
       isCleaning = false;
     }
   }
@@ -192,6 +171,54 @@ float readDust() {
   }
 
   return dust;
+}
+
+/* ===============================
+   MESIN FUZZY LOGIC (Sugeno Orde-0)
+================================ */
+int hitungFuzzyWiper(float dust) {
+  // 1. FUZZIFIKASI INPUT DEBU
+  // Bersih: turun dari 1 (di <= 10) ke 0 (di >= 20)
+  float mu_bersih = 0.0;
+  if (dust <= 10.0) mu_bersih = 1.0;
+  else if (dust > 10.0 && dust < 20.0) mu_bersih = (20.0 - dust) / (20.0 - 10.0);
+  else mu_bersih = 0.0;
+
+  // Sedang: naik dari 10 ke 20 (puncak=1), turun dari 20 ke 30
+  float mu_sedang = 0.0;
+  if (dust <= 10.0 || dust >= 30.0) mu_sedang = 0.0;
+  else if (dust > 10.0 && dust <= 20.0) mu_sedang = (dust - 10.0) / (20.0 - 10.0);
+  else if (dust > 20.0 && dust < 30.0) mu_sedang = (30.0 - dust) / (30.0 - 20.0);
+
+  // Kotor: naik dari 20 ke 30 (puncak >= 30)
+  float mu_kotor = 0.0;
+  if (dust <= 20.0) mu_kotor = 0.0;
+  else if (dust > 20.0 && dust < 30.0) mu_kotor = (dust - 20.0) / (30.0 - 20.0);
+  else mu_kotor = 1.0;
+
+  // Print derajat keanggotaan untuk debugging
+  Serial.printf("📊 Fuzzifikasi -> Bersih: %.2f, Sedang: %.2f, Kotor: %.2f\n", mu_bersih, mu_sedang, mu_kotor);
+
+  // 2. ATURAN DAN DEFUZZIFIKASI (Sugeno Orde-0)
+  // Konstanta output (jumlah sapuan wiper)
+  const float Z_BERSIH = 0.0;  // 0 sapuan
+  const float Z_SEDANG = 1.0;  // 1 sapuan
+  const float Z_KOTOR = 6.0;   // 6 sapuan
+
+  // Evaluasi Aturan & Rata-rata Berbobot
+  float totalAlphaZ = (mu_bersih * Z_BERSIH) + (mu_sedang * Z_SEDANG) + (mu_kotor * Z_KOTOR);
+  float totalAlpha = mu_bersih + mu_sedang + mu_kotor;
+
+  float outputFuzzy = 0.0;
+  if (totalAlpha > 0.0) {
+    outputFuzzy = totalAlphaZ / totalAlpha;
+  }
+
+  // Bulatkan hasil ke integer terdekat untuk jumlah siklus wiper
+  int cycles = round(outputFuzzy);
+  Serial.printf("🌀 Output Fuzzy (Kontinu): %.2f -> Dibulatkan: %d siklus\n", outputFuzzy, cycles);
+
+  return cycles;
 }
 
 /* ===============================

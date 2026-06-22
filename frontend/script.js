@@ -8,7 +8,7 @@ function toggleSidebar() {
 // =====================================================
 // Function to update the dashboard UI with new data
 function updateDashboardUI(data) {
-  if (!data.panel || !data.baterai) {
+  if (!data.baterai) {
     console.warn('⚠️ Data tidak lengkap:', data);
     return;
   }
@@ -21,7 +21,6 @@ function updateDashboardUI(data) {
     deviceStatus.style.borderColor = 'rgba(46,204,113,0.2)';
   }
 
-  const dayaPanel = data.panel.power || 0;
   const dayaBaterai = data.baterai.power || 0;
   
   // 1. Tangkap Data Fuzzy dari Backend
@@ -131,7 +130,22 @@ if (logoutLink) {
 // =====================================================
 //  SOCKET.IO REAL-TIME CONNECTION
 // =====================================================
-const socket = io();
+// Menentukan URL backend secara dinamis agar tidak putus-putus
+// jika dibuka dari port/host yang berbeda (misal Live Server) atau file lokal.
+let socketUrl = '';
+if (window.location.protocol === 'file:') {
+  socketUrl = 'http://localhost:3000';
+} else if (window.location.port && window.location.port !== '3000') {
+  socketUrl = `${window.location.protocol}//${window.location.hostname}:3000`;
+}
+
+const socket = io(socketUrl, {
+  transports: ['polling', 'websocket'], // Menggunakan polling terlebih dahulu lalu mencoba upgrade ke websocket
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 20000
+});
+  
 let socketConnected = false;
 
 socket.on('connect', () => {
@@ -144,8 +158,12 @@ socket.on('latestData', (data) => {
   updateDashboardUI(data);
 });
 
-socket.on('disconnect', () => {
-  console.warn('❌ Terputus dari server realtime');
+socket.on('connect_error', (err) => {
+  console.error('❌ Gagal menyambung ke Socket.IO:', err.message);
+});
+
+socket.on('disconnect', (reason) => {
+  console.warn('❌ Terputus dari server realtime, alasan:', reason);
   socketConnected = false;
 });
 
