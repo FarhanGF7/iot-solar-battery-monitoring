@@ -12,7 +12,7 @@ const {
 
 // Session check moved to authRoutes.js
 
-// === DATA (Panel & Baterai) ===
+// === DATA (Baterai) ===
 router.post('/data', postData);
 router.get('/data/latest', getLatestData);
 router.get('/history', getDailyEnergy);

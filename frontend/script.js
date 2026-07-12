@@ -179,7 +179,7 @@ setInterval(() => {
     console.log('🔄 Socket offline, mencoba fetch fallback...');
     fetchLiveData();
   }
-}, 5000);
+}, 60000); // 1 menit
 
 // Tetap update dashboard metrics averages (daya rata-rata) setiap 10 detik
 setInterval(loadDashboardMetrics, 10000);

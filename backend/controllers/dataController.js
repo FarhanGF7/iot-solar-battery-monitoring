@@ -196,8 +196,7 @@ const getDailyEnergy = (req, res) => {
 //
 // === DASHBOARD METRICS ===
 //
-const PANEL_WP = 20;    // panel 20 watt-peak
-const INTERVAL = 1800;     // interval data 30 menit
+const INTERVAL = 300;     // interval data 5 menit
 
 const getDashboardMetrics = (req, res) => {
   const query = `

@@ -4,13 +4,20 @@ let powerChart, tempChart, fuzzyChart;
 
 document.addEventListener("DOMContentLoaded", async () => {
     if (typeof renderSession === "function") await renderSession();
-    await loadPowerChart();
-    await loadDashboardMetrics();
+    
+    // Tampilan awal saat belum memilih tanggal:
+    // 1. Kosongkan nilai date picker agar menandakan tidak ada tanggal yang terpilih
+    const dateFilter = document.getElementById("dateFilter");
+    if (dateFilter) {
+        dateFilter.value = "";
+    }
+
+    // 2. Load data dan grafik tanpa filter (tampilkan seluruh data di database)
+    await loadPowerChart(null);
 });
 
 
-/* ========== GRAFIK PRODUKSI vs BATERAI ========== */
-/* ========== GRAFIK GABUNGAN (POWER, SUHU, FUZZY) ========== */
+/* ========== GRAFIK GABUNGAN (POWER, SUHU, FUZZY) & RINGKASAN HARIAN ========== */
 async function loadPowerChart(filterDate = null) {
   const ctxPower = document.getElementById('powerChart').getContext('2d');
   const ctxTemp = document.getElementById('tempChart').getContext('2d');
@@ -33,13 +40,76 @@ async function loadPowerChart(filterDate = null) {
         deviceStatus.style.borderColor = 'rgba(46,204,113,0.2)';
       }
 
-      const labels = records.map(r => new Date(r.timestamp).toLocaleTimeString());
+      // Jika data kosong untuk tanggal yang dipilih
+      if (!Array.isArray(records) || records.length === 0) {
+          if (powerChart) powerChart.destroy();
+          if (tempChart) tempChart.destroy();
+          if (fuzzyChart) fuzzyChart.destroy();
+
+          document.getElementById("avg-load-power").textContent = "-- W";
+          document.getElementById("last-temp").textContent = "-- °C";
+          document.getElementById("last-fuzzy").textContent = "--";
+          return;
+      }
+
+      // Hitung metrik ringkasan harian khusus untuk tanggal terpilih (atau keseluruhan jika null)
+      const validPowerRecords = records.filter(r => r.baterai_power !== null);
+      const avgPower = validPowerRecords.length > 0
+        ? (validPowerRecords.reduce((sum, r) => sum + r.baterai_power, 0) / validPowerRecords.length).toFixed(2)
+        : '0.00';
+
+      const lastRecord = records[records.length - 1];
+      const lastTemp = lastRecord && lastRecord.baterai_temperature !== null
+        ? lastRecord.baterai_temperature.toFixed(1)
+        : '0.0';
+      const lastFuzzyStatus = lastRecord && lastRecord.fuzzy_status ? lastRecord.fuzzy_status : 'Tidak Diketahui';
+      const lastFuzzyScore = lastRecord && lastRecord.fuzzy_score !== null ? lastRecord.fuzzy_score.toFixed(1) : '0.0';
+
+      // Update ringkasan kartu harian di HTML khusus tanggal terpilih (atau keseluruhan)
+      document.getElementById("avg-load-power").textContent = `${avgPower} W`;
+      document.getElementById("last-temp").textContent = `${lastTemp} °C`;
+      document.getElementById("last-fuzzy").textContent = `${lastFuzzyStatus} (${lastFuzzyScore})`;
+
+      // Buat label sumbu X (menyertakan Tanggal & Waktu di label asli untuk tooltip, sumbu X bawah hanya Jam)
+      const labels = records.map(r => {
+          const d = new Date(r.timestamp);
+          const dateStr = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const timeStr = d.toLocaleTimeString('id-ID');
+          return `${dateStr} ${timeStr}`;
+      });
       
       const baterai = records.map(r => r.baterai_power || 0);
-      
-      // Data Fuzzy Baru yang diambil dari backend
       const suhu = records.map(r => r.baterai_temperature || 0);
       const fuzzyScore = records.map(r => r.fuzzy_score || 0);
+
+      // Konfigurasi sumbu X yang disesuaikan secara dinamis
+      const ticksConfig = {
+          color: '#e2e8f0',
+          font: { size: 13 },
+          callback: function(val, index) {
+              const label = this.getLabelForValue(val);
+              if (typeof label === 'string') {
+                  if (filterDate) {
+                      // Jika difilter per tanggal, tampilkan Jam saja (misal: 10:30:15)
+                      return label.includes(' ') ? label.split(' ')[1] : label;
+                  } else {
+                      // Jika menampilkan seluruh data, tampilkan Tanggal + Jam Singkat (misal: 23/06 10:30)
+                      const parts = label.split(' ');
+                      if (parts.length === 2) {
+                          const datePart = parts[0].substring(0, 5); // Ambil "DD/MM" dari "DD/MM/YYYY"
+                          const timePart = parts[1].substring(0, 5); // Ambil "HH:MM" dari "HH:MM:SS"
+                          return `${datePart} ${timePart}`;
+                      }
+                  }
+              }
+              return label;
+          }
+      };
+      const yAxisConfig = {
+          beginAtZero: true,
+          grid: { color: 'rgba(255, 255, 255, 0.12)' },
+          ticks: { color: '#e2e8f0', font: { size: 13 } }
+      };
 
       // 1. Chart Daya Input Baterai
       if (powerChart) powerChart.destroy();
@@ -48,10 +118,27 @@ async function loadPowerChart(filterDate = null) {
           data: {
               labels,
               datasets: [
-                  { label: 'Daya Input Baterai (W)', data: baterai, borderColor: 'cyan', borderWidth: 2, fill: false }
+                  { 
+                      label: 'Daya Input Baterai (W)', 
+                      data: baterai, 
+                      borderColor: 'cyan', 
+                      borderWidth: 3, 
+                      fill: false,
+                      pointRadius: 3,
+                      pointHoverRadius: 6
+                  }
               ]
           },
-          options: { responsive: true, scales: { y: { beginAtZero: true } } }
+          options: { 
+              responsive: true, 
+              scales: { 
+                  x: { 
+                      grid: { color: 'rgba(255, 255, 255, 0.12)' },
+                      ticks: ticksConfig 
+                  },
+                  y: yAxisConfig
+              } 
+          }
       });
 
       // 2. Chart Suhu Baterai
@@ -63,12 +150,23 @@ async function loadPowerChart(filterDate = null) {
               datasets: [{
                   label: 'Suhu Baterai (°C)',
                   data: suhu,
-                  borderColor: '#ff9800', // Warna Oranye
-                  borderWidth: 2,
-                  fill: false
+                  borderColor: '#ff9800',
+                  borderWidth: 3,
+                  fill: false,
+                  pointRadius: 3,
+                  pointHoverRadius: 6
               }]
           },
-          options: { responsive: true, scales: { y: { beginAtZero: true } } }
+          options: { 
+              responsive: true, 
+              scales: { 
+                  x: { 
+                      grid: { color: 'rgba(255, 255, 255, 0.12)' },
+                      ticks: ticksConfig 
+                  },
+                  y: yAxisConfig
+              } 
+          }
       });
 
       // 3. Chart Evaluasi Fuzzy Score
@@ -80,18 +178,24 @@ async function loadPowerChart(filterDate = null) {
               datasets: [{
                   label: 'Fuzzy Score (Kesehatan Baterai)',
                   data: fuzzyScore,
-                  borderColor: '#28a745', // Warna Hijau
-                  backgroundColor: 'rgba(40, 167, 69, 0.2)', // Fill hijau transparan
-                  borderWidth: 2,
-                  fill: true
+                  borderColor: '#28a745',
+                  backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                  borderWidth: 3,
+                  fill: true,
+                  pointRadius: 3,
+                  pointHoverRadius: 6
               }]
           },
           options: { 
               responsive: true, 
               scales: { 
+                  x: { 
+                      grid: { color: 'rgba(255, 255, 255, 0.12)' },
+                      ticks: ticksConfig 
+                  },
                   y: { 
-                      beginAtZero: true, 
-                      max: 100 // Karena skor Fuzzy maksimal 100
+                      ...yAxisConfig,
+                      max: 100
                   } 
               } 
           }
@@ -110,80 +214,7 @@ async function loadPowerChart(filterDate = null) {
 }
 
 
-/* ========== DASHBOARD METRICS ========== */
-async function loadDashboardMetrics() {
-    try {
-        const resMetrics = await fetch("/api/dashboard/metrics");
-        const dataMetrics = await resMetrics.json();
-        
-        const resLatest = await fetch("/api/data/latest");
-        const dataLatest = await resLatest.json();
 
-        document.getElementById("avg-load-power").textContent = (dataMetrics.avg_load ?? 0) + " W";
-        document.getElementById("last-temp").textContent = (dataLatest.baterai.temperature ?? 0) + " °C";
-        document.getElementById("last-fuzzy").textContent = (dataLatest.baterai.fuzzy_status ?? "--") + ` (${dataLatest.baterai.fuzzy_score ?? 0})`;
-
-    } catch (err) {
-        console.error("Gagal ambil dashboard metrics:", err);
-    }
-}
-
-
-/* ========== EXPORT CSV (Panel + Baterai + Suhu + Fuzzy) ========== */
-const exportBtn = document.getElementById("exportBtn");
-
-if (exportBtn) {
-  exportBtn.addEventListener("click", async () => {
-    try {
-      const res = await fetch("/api/data/full"); // Route getAllPanelBaterai di backend
-      const records = await res.json();
-
-      // Tambahkan header CSV baru untuk Suhu, Fuzzy Score, dan Status
-      let csvContent =
-        "Timestamp,Tegangan Baterai (V),Arus Baterai (A),Daya Baterai (W),Suhu Baterai (C),Fuzzy Score,Status Baterai\n";
-
-      function csvEscape(value) {
-        if (value === null || value === undefined) return '""';
-        const s = String(value);
-        return `"${s.replace(/"/g, '""')}"`;
-      }
-
-      records.forEach(r => {
-        const d = new Date(r.timestamp);
-        const timeStr = `${d.toLocaleDateString("id-ID")} ${d.toLocaleTimeString("id-ID")}`;
-
-        const bateraiV = r.baterai_voltage ?? "";
-        const bateraiI = r.baterai_current ?? "";
-        const bateraiP = r.baterai_power ?? "";
-        
-        // Ambil data fuzzy
-        const suhu = r.baterai_temperature ?? "";
-        const fScore = r.fuzzy_score ?? "";
-        const fStatus = r.fuzzy_status ?? "";
-
-        const row = [
-          csvEscape(timeStr),
-          csvEscape(bateraiV), csvEscape(bateraiI), csvEscape(bateraiP),
-          csvEscape(suhu), csvEscape(fScore), csvEscape(fStatus)
-        ].join(",");
-
-        csvContent += row + "\n";
-      });
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "Data_Evaluasi_Baterai_Fuzzy.csv";
-      a.click();
-
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Gagal export CSV:", err);
-    }
-  });
-}
 
 /* ========== FILTER TANGGAL ========== */
 const dateFilter = document.getElementById("dateFilter");

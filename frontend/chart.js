@@ -22,12 +22,12 @@ window.lineChart = new Chart(ctx, {
     },
     scales: {
       x: {
-        ticks: { color: '#fff' },
+        ticks: { color: '#fff', font: { size: 13 } },
         title: { display: true, text: 'Waktu', color: '#fff' }
       },
       y: {
         beginAtZero: true,
-        ticks: { color: '#fff' },
+        ticks: { color: '#fff', font: { size: 13 } },
         title: { display: true, text: 'Daya (Watt)', color: '#fff' }
       }
     }

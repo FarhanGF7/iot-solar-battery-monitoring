@@ -5,6 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log Data Sensor | FHN Lab</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .btn-export {
+      background-color: #2563eb;
+      color: #ffffff;
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      transition: background-color 0.2s;
+      height: 38px;
+      box-sizing: border-box;
+      margin-bottom: 1.5rem;
+    }
+    .btn-export:hover {
+      background-color: #1d4ed8;
+    }
+  </style>
 </head>
 <body>
   <!-- TOPBAR -->
@@ -32,6 +54,9 @@
     <div class="content">
       <h2>Log Data Sensor</h2>
       <p style="color: #94a3b8; margin-bottom: 1.5rem;">Menampilkan log data sensor baterai lengkap dengan hasil evaluasi logika fuzzy secara real-time dari database MySQL.</p>
+
+      <!-- BUTTON EXPORT CSV DI ATAS TABEL -->
+      <button id="exportCsvBtn" class="btn-export">⬇️ Export CSV</button>
 
       <div style="overflow-x: auto; background-color: #111927; border-radius: 8px; padding: 10px; border: 1px solid #2f3b4c;">
         <table class="data-table">

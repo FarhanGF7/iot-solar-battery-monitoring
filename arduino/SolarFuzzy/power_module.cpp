@@ -76,13 +76,7 @@ void kirimDataPLTS() {
   float bateraiV = sumBateraiV / sampleCount;
   float bateraiC = sumBateraiC / sampleCount;
   float bateraiP = sumBateraiP / sampleCount;
-
   float rataSuhu = sumSuhu / sampleCount;
-
-  // Reset semua buffer akumulasi ke 0 untuk siklus 5 menit berikutnya
-  sumBateraiV = sumBateraiC = sumBateraiP = 0;
-  sumSuhu = 0;
-  sampleCount = 0;
 
   struct tm timeinfo;
   Serial.println("======================================");
@@ -110,14 +104,22 @@ void kirimDataPLTS() {
     http.addHeader("Content-Type", "application/json");
     
     int httpResponseCode = http.POST(jsonData);
-    if (httpResponseCode > 0) {
-      Serial.printf("📤 Server MySQL Response Code: %d\n", httpResponseCode);
+    if (httpResponseCode == 200) {
+      Serial.printf("📤 Berhasil! Server Response: %d\n", httpResponseCode);
+      
+      // HANYA RESET JIKA DATA BERHASIL TERKIRIM
+      sumBateraiV = 0;
+      sumBateraiC = 0;
+      sumBateraiP = 0;
+      sumSuhu = 0;
+      sampleCount = 0;
     } else {
-      Serial.printf("⚠️ Gagal mengirim data baterai! Error: %s\n", http.errorToString(httpResponseCode).c_str());
+      Serial.printf("⚠️ Gagal mengirim! Error: %s\n", http.errorToString(httpResponseCode).c_str());
+      // Data tidak di-reset, akan diakumulasikan ke pengiriman 5 menit berikutnya
     }
     http.end();
   } else {
-    Serial.println("❌ Gagal Kirim Data, WiFi Terputus!");
+    Serial.println("❌ Gagal Kirim Data, WiFi Terputus! Data diamankan di memory.");
   }
 }
 
