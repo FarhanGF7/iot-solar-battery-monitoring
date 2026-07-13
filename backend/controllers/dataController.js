@@ -252,6 +252,9 @@ const postData = (req, res) => {
         return res.status(500).json({ message: "Gagal simpan data fuzzy" });
       }
 
+      // Cetak notifikasi penerimaan data di terminal Node.js
+      console.log(`📥 [ESP32 - Baterai] Diterima: ${baterai.voltage}V | ${baterai.current}A | ${baterai.power}W | Suhu: ${suhuBaterai}°C -> Status Fuzzy: ${hasilFuzzy.status} (Skor: ${hasilFuzzy.score})`);
+
       // Emit data realtime via Socket.IO
       const io = req.app.get("io");
       if (io) {
