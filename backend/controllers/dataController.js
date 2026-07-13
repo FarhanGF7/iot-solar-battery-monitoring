@@ -18,20 +18,168 @@ const db = require('../db').pool;
 // === MESIN FUZZY LOGIC ===
 // 
 function hitungFuzzyBaterai(v, i, t) {
+    // Deklarasi variabel
+    let v_rendah, v_normal, v_tinggi;
+    let i_ringan, i_sedang, i_berat;
+    let t_normal, t_hangat, t_panas;
+
+    // ==========================================
     // 1. FUZZIFIKASI TEGANGAN (Voltage)
-    let v_rendah = (v <= 11.5) ? 1 : (v >= 12.0 ? 0 : (12.0 - v) / (12.0 - 11.5));
-    let v_normal = (v <= 11.5 || v >= 14.0) ? 0 : (v > 11.5 && v <= 12.0 ? (v - 11.5) / (12.0 - 11.5) : (v >= 13.5 && v < 14.0 ? (14.0 - v) / (14.0 - 13.5) : 1));
-    let v_tinggi = (v <= 13.5) ? 0 : (v >= 14.0 ? 1 : (v - 13.5) / (14.0 - 13.5));
+    // ==========================================
+    // -- Himpunan Tegangan Rendah --
+    if (v <= 11.5) {
+        // Kondisi 1: Kurang dari atau sama dengan titik bawah (100% Rendah)
+        v_rendah = 1;
+    } else if (v >= 12.0) {
+        // Kondisi 2: Lebih dari titik batas atas rendah (Sama sekali bukan Rendah)
+        v_rendah = 0;
+    } else {
+        // Kondisi 3: Berangsur turun menjauhi rendah (menuju normal)
+        // Perhitungan: (Batas Atas - Tegangan) / (Batas Atas - Batas Bawah)
+        v_rendah = (12.0 - v) / (12.0 - 11.5);
+    }
+
+    // -- Himpunan Tegangan Normal --
+    if (v <= 11.5 || v >= 14.0) {
+        // Kondisi 1: Di luar batas normal (Sama sekali tidak normal)
+        v_normal = 0;
+    } else if (v > 11.5 && v <= 12.0) {
+        // Kondisi 2: Berangsur naik menuju normal
+        // Perhitungan: (Tegangan - Batas Bawah) / (Titik Puncak - Batas Bawah)
+        v_normal = (v - 11.5) / (12.0 - 11.5);
+    } else if (v >= 13.5 && v < 14.0) {
+        // Kondisi 3: Berangsur turun menjauhi normal
+        // Perhitungan: (Batas Atas - Tegangan) / (Batas Atas - Titik Turun)
+        v_normal = (14.0 - v) / (14.0 - 13.5);
+    } else {
+        // Kondisi 4: Jika tidak masuk semua kondisi di atas (berarti v > 12.0 dan v < 13.5)
+        // Titik ideal, 100% normal
+        v_normal = 1;
+    }
+
+    // -- Himpunan Tegangan Tinggi --
+    if (v <= 13.5) {
+        // Kondisi 1: Kurang dari titik batas bawah tinggi (Sama sekali bukan Tinggi)
+        v_tinggi = 0;
+    } else if (v >= 14.0) {
+        // Kondisi 2: Lebih dari atau sama dengan titik puncak tinggi (100% Tinggi)
+        v_tinggi = 1;
+    } else {
+        // Kondisi 3: Berangsur naik menuju tinggi
+        // Perhitungan: (Tegangan - Batas Bawah) / (Titik Puncak - Batas Bawah)
+        v_tinggi = (v - 13.5) / (14.0 - 13.5);
+    }
+
+
+    // ==========================================
+    // 2. FUZZIFIKASI ARUS (Current)
+    // ==========================================
+    // -- Himpunan Arus Ringan --
+    if (i <= 2) {
+        // Kondisi 1: Kurang dari atau sama dengan titik bawah (100% Ringan)
+        i_ringan = 1;
+    } else if (i >= 3) {
+        // Kondisi 2: Lebih dari titik batas atas ringan (Sama sekali bukan Ringan)
+        i_ringan = 0;
+    } else {
+        // Kondisi 3: Berangsur turun menjauhi ringan
+        // Perhitungan: (Batas Atas - Arus) / (Batas Atas - Batas Bawah)
+        i_ringan = (3 - i) / (3 - 2);
+    }
+
+    // -- Himpunan Arus Sedang --
+    if (i <= 2 || i >= 6) {
+        // Kondisi 1: Di luar batas sedang (Sama sekali tidak sedang)
+        i_sedang = 0;
+    } else if (i > 2 && i <= 3) {
+        // Kondisi 2: Berangsur naik menuju sedang
+        // Perhitungan: (Arus - Batas Bawah) / (Titik Puncak - Batas Bawah)
+        i_sedang = (i - 2) / (3 - 2);
+    } else if (i >= 5 && i < 6) {
+        // Kondisi 3: Berangsur turun menjauhi sedang
+        // Perhitungan: (Batas Atas - Arus) / (Batas Atas - Titik Turun)
+        i_sedang = (6 - i) / (6 - 5);
+    } else {
+        // Kondisi 4: Jika tidak masuk semua kondisi di atas
+        // Titik ideal, 100% sedang
+        i_sedang = 1;
+    }
+
+    // -- Himpunan Arus Berat --
+    if (i <= 5) {
+        // Kondisi 1: Kurang dari titik batas bawah berat (Sama sekali bukan Berat)
+        i_berat = 0;
+    } else if (i >= 6) {
+        // Kondisi 2: Lebih dari atau sama dengan titik puncak berat (100% Berat)
+        i_berat = 1;
+    } else {
+        // Kondisi 3: Berangsur naik menuju berat
+        // Perhitungan: (Arus - Batas Bawah) / (Titik Puncak - Batas Bawah)
+        i_berat = (i - 5) / (6 - 5);
+    }
+
+    // ==========================================
+    // 3. FUZZIFIKASI SUHU (Temperature)
+    // ==========================================
+    // -- Himpunan Suhu Normal --
+    if (t <= 35) {
+        // Kondisi 1: Kurang dari atau sama dengan titik bawah (100% Normal)
+        t_normal = 1;
+    } else if (t >= 40) {
+        // Kondisi 2: Lebih dari titik batas atas normal (Sama sekali bukan Normal)
+        t_normal = 0;
+    } else {
+        // Kondisi 3: Berangsur turun menjauhi normal
+        // Perhitungan: (Batas Atas - Suhu) / (Batas Atas - Batas Bawah)
+        t_normal = (40 - t) / (40 - 35);
+    }
+
+    // -- Himpunan Suhu Hangat --
+    if (t <= 35 || t >= 50) {
+        // Kondisi 1: Di luar batas hangat (Sama sekali tidak hangat)
+        t_hangat = 0;
+    } else if (t > 35 && t <= 40) {
+        // Kondisi 2: Berangsur naik menuju hangat
+        // Perhitungan: (Suhu - Batas Bawah) / (Titik Puncak - Batas Bawah)
+        t_hangat = (t - 35) / (40 - 35);
+    } else if (t >= 45 && t < 50) {
+        // Kondisi 3: Berangsur turun menjauhi hangat
+        // Perhitungan: (Batas Atas - Suhu) / (Batas Atas - Titik Turun)
+        t_hangat = (50 - t) / (50 - 45);
+    } else {
+        // Kondisi 4: Jika tidak masuk semua kondisi di atas
+        // Titik ideal, 100% hangat
+        t_hangat = 1;
+    }
+
+    // -- Himpunan Suhu Panas --
+    if (t <= 45) {
+        // Kondisi 1: Kurang dari titik batas bawah panas (Sama sekali bukan Panas)
+        t_panas = 0;
+    } else if (t >= 50) {
+        // Kondisi 2: Lebih dari atau sama dengan titik puncak panas (100% Panas)
+        t_panas = 1;
+    } else {
+        // Kondisi 3: Berangsur naik menuju panas
+        // Perhitungan: (Suhu - Batas Bawah) / (Titik Puncak - Batas Bawah)
+        t_panas = (t - 45) / (50 - 45);
+    }
+
+    // Ternary Operator Version
+    // 1. FUZZIFIKASI TEGANGAN (Voltage)
+    // let v_rendah = (v <= 11.5) ? 1 : (v >= 12.0 ? 0 : (12.0 - v) / (12.0 - 11.5));
+    // let v_normal = (v <= 11.5 || v >= 14.0) ? 0 : (v > 11.5 && v <= 12.0 ? (v - 11.5) / (12.0 - 11.5) : (v >= 13.5 && v < 14.0 ? (14.0 - v) / (14.0 - 13.5) : 1));
+    // let v_tinggi = (v <= 13.5) ? 0 : (v >= 14.0 ? 1 : (v - 13.5) / (14.0 - 13.5));
 
     // 2. FUZZIFIKASI ARUS (Current)
-    let i_ringan = (i <= 2) ? 1 : (i >= 3 ? 0 : (3 - i) / (3 - 2));
-    let i_sedang = (i <= 2 || i >= 6) ? 0 : (i > 2 && i <= 3 ? (i - 2) / (3 - 2) : (i >= 5 && i < 6 ? (6 - i) / (6 - 5) : 1));
-    let i_berat  = (i <= 5) ? 0 : (i >= 6 ? 1 : (i - 5) / (6 - 5));
+    // let i_ringan = (i <= 2) ? 1 : (i >= 3 ? 0 : (3 - i) / (3 - 2));
+    // let i_sedang = (i <= 2 || i >= 6) ? 0 : (i > 2 && i <= 3 ? (i - 2) / (3 - 2) : (i >= 5 && i < 6 ? (6 - i) / (6 - 5) : 1));
+    // let i_berat  = (i <= 5) ? 0 : (i >= 6 ? 1 : (i - 5) / (6 - 5));
 
     // 3. FUZZIFIKASI SUHU (Temperature)
-    let t_normal = (t <= 35) ? 1 : (t >= 40 ? 0 : (40 - t) / (40 - 35));
-    let t_hangat = (t <= 35 || t >= 50) ? 0 : (t > 35 && t <= 40 ? (t - 35) / (40 - 35) : (t >= 45 && t < 50 ? (50 - t) / (50 - 45) : 1));
-    let t_panas  = (t <= 45) ? 0 : (t >= 50 ? 1 : (t - 45) / (50 - 45));
+    // let t_normal = (t <= 35) ? 1 : (t >= 40 ? 0 : (40 - t) / (40 - 35));
+    // let t_hangat = (t <= 35 || t >= 50) ? 0 : (t > 35 && t <= 40 ? (t - 35) / (40 - 35) : (t >= 45 && t < 50 ? (50 - t) / (50 - 45) : 1));
+    // let t_panas  = (t <= 45) ? 0 : (t >= 50 ? 1 : (t - 45) / (50 - 45));
   
     // 4. EVALUASI ATURAN (Rule Base & Inferensi)
     let rules = [];
