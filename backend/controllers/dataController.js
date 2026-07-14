@@ -1,17 +1,4 @@
 // controllers/dataController.js
-function voltageToSoc(v) {
-  if (v >= 12.80) return 100;
-  if (v >= 12.70) return 90;
-  if (v >= 12.60) return 80;
-  if (v >= 12.50) return 70;
-  if (v >= 12.42) return 60;
-  if (v >= 12.32) return 50;
-  if (v >= 12.20) return 40;
-  if (v >= 12.06) return 30;
-  if (v >= 11.90) return 20;
-  if (v >= 11.80) return 10;
-  return 0;
-}
 const db = require('../db').pool;
 
 // 
@@ -327,33 +314,13 @@ const getLatestData = (req, res) => {
 //
 // === DASHBOARD METRICS ===
 //
-const INTERVAL = 300;     // interval data 5 menit
-
 const getDashboardMetrics = (req, res) => {
   const query = `
-  SELECT 
-    b.voltage AS batt_voltage,
-    b.power AS power_load,
-    (
-      SELECT ROUND(SUM(power * ${INTERVAL} / 3600000), 4)
-      FROM baterai 
-      WHERE DATE(created_at) = CURDATE()
-    ) AS energy_today,
-    (
-      SELECT ROUND(MAX(power), 2)
-      FROM baterai
-      WHERE DATE(created_at) = CURDATE()
-    ) AS peak_power,
-    (
-      SELECT IFNULL(ROUND(AVG(power), 2), 0)
-      FROM (
-        SELECT power FROM baterai ORDER BY id DESC LIMIT 10
-      ) temp
-    ) AS avg_load
-  FROM baterai b
-  WHERE b.id = (SELECT MAX(id) FROM baterai)
-  LIMIT 1
-`;
+    SELECT IFNULL(ROUND(AVG(power), 2), 0) AS avg_load
+    FROM (
+      SELECT power FROM baterai ORDER BY id DESC LIMIT 10
+    ) temp
+  `;
 
   db.query(query, (err, results) => {
     if (err) {
@@ -362,34 +329,11 @@ const getDashboardMetrics = (req, res) => {
     }
 
     if (results.length === 0 || !results[0]) {
-      return res.json({
-        energy_today: 0,
-        peak_power: 0,
-        efficiency: "0.0",
-        power_load: 0,
-        avg_load: 0,
-        battery_voltage: 12.0,
-        battery_health: 50
-      });
+      return res.json({ avg_load: 0 });
     }
 
-    const row = results[0];
-
-    // SOC baterai
-    const battery_voltage = row.batt_voltage || 12.0;
-    const battery_health = voltageToSoc(battery_voltage);
-
-    // Efisiensi diset 0 karena data panel ditiadakan
-    const efficiency = 0;
-
     res.json({
-      energy_today: row.energy_today,
-      peak_power: row.peak_power,
-      efficiency: efficiency.toFixed(1),
-      power_load: row.power_load,
-      avg_load: row.avg_load,
-      battery_voltage: battery_voltage,
-      battery_health: battery_health
+      avg_load: results[0].avg_load
     });
   });
 };
