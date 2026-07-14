@@ -4,8 +4,10 @@ function toggleSidebar() {
 }
 
 // =====================================================
-//  FETCH DATA LIVE (Panel & Baterai)
+//  FETCH DATA LIVE (Baterai)
 // =====================================================
+let lastTimestamp = null;
+
 // Function to update the dashboard UI with new data
 function updateDashboardUI(data) {
   if (!data.baterai) {
@@ -53,12 +55,14 @@ function updateDashboardUI(data) {
     cardStatus.style.borderLeft = "5px solid #dc3545";
   }
 
-  // 4. Tambah ke grafik (Line Chart)
-  const now = new Date().toLocaleTimeString();
+  // 4. Tambah ke grafik (Line Chart) jika timestamp baru
+  const recordTimestamp = data.baterai.timestamp;
   const chart = window.lineChart;
 
-  if (chart) {
-    chart.data.labels.push(now);
+  if (chart && recordTimestamp && recordTimestamp !== lastTimestamp) {
+    lastTimestamp = recordTimestamp;
+    const timeStr = new Date(recordTimestamp).toLocaleTimeString();
+    chart.data.labels.push(timeStr);
     chart.data.datasets[0].data.push(dayaBaterai);
 
     if (chart.data.labels.length > 10) {
@@ -68,6 +72,27 @@ function updateDashboardUI(data) {
 
     chart.update();
   }
+}
+
+function initializeDashboardChart(records) {
+  const chart = window.lineChart;
+  if (!chart || !Array.isArray(records) || records.length === 0) return;
+
+  chart.data.labels = [];
+  chart.data.datasets[0].data = [];
+
+  records.forEach(r => {
+    const timeStr = new Date(r.timestamp).toLocaleTimeString();
+    chart.data.labels.push(timeStr);
+    chart.data.datasets[0].data.push(r.power || 0);
+  });
+
+  const lastRecord = records[records.length - 1];
+  if (lastRecord) {
+    lastTimestamp = lastRecord.timestamp;
+  }
+
+  chart.update();
 }
 
 async function fetchLiveData() {
@@ -85,6 +110,21 @@ async function fetchLiveData() {
       deviceStatus.style.borderColor = 'rgba(255,82,82,0.2)';
     }
   }
+}
+
+async function initializeDashboard() {
+  try {
+    const recentRes = await fetch('/api/data/recent');
+    const recentData = await recentRes.json();
+
+    if (Array.isArray(recentData) && recentData.length > 0) {
+      initializeDashboardChart(recentData);
+    }
+  } catch (err) {
+    console.error('❌ Gagal inisialisasi grafik:', err);
+  }
+
+  await fetchLiveData();
 }
 
 // =====================================================
@@ -170,7 +210,7 @@ socket.on('disconnect', (reason) => {
 // =====================================================
 //  INITIAL LOAD & FALLBACK AUTO UPDATE
 // =====================================================
-fetchLiveData();
+initializeDashboard();
 loadDashboardMetrics();
 
 // Fallback Polling: Hanya fetch jika socket tidak terhubung

@@ -260,6 +260,7 @@ const postData = (req, res) => {
       if (io) {
         io.emit("latestData", {
           baterai: {
+            timestamp: new Date().toISOString(),
             voltage: parseFloat(baterai.voltage),
             current: parseFloat(baterai.current),
             power: parseFloat(baterai.power),
@@ -285,6 +286,7 @@ const postData = (req, res) => {
 const getLatestData = (req, res) => {
   const query = `
     SELECT 
+      b.created_at AS timestamp,
       b.voltage AS baterai_voltage,
       b.current AS baterai_current,
       b.power AS baterai_power,
@@ -309,6 +311,7 @@ const getLatestData = (req, res) => {
 
     res.json({
       baterai: {
+        timestamp: results[0].timestamp,
         voltage: results[0].baterai_voltage,
         current: results[0].baterai_current,
         power: results[0].baterai_power,
@@ -317,29 +320,6 @@ const getLatestData = (req, res) => {
         fuzzy_status: results[0].fuzzy_status      // Status (Baik/Waspada/Kritis)
       }
     });
-  });
-};
-
-//
-// === GET HISTORY ENERGI ===
-//
-const getDailyEnergy = (req, res) => {
-  const query = `
-    SELECT 
-      DATE_FORMAT(created_at, '%Y-%m-%d') AS date,
-      ROUND(SUM(power * 1800 / 3600000), 4) AS energy_kWh
-    FROM baterai
-    GROUP BY DATE(created_at)
-    ORDER BY date DESC
-    LIMIT 7
-  `;
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Gagal ambil data energi:", err);
-      return res.status(500).json({ message: "Gagal ambil data energi" });
-    }
-    res.json(results);
   });
 };
 
@@ -364,7 +344,12 @@ const getDashboardMetrics = (req, res) => {
       FROM baterai
       WHERE DATE(created_at) = CURDATE()
     ) AS peak_power,
-    ROUND(b.power, 2) AS avg_load
+    (
+      SELECT IFNULL(ROUND(AVG(power), 2), 0)
+      FROM (
+        SELECT power FROM baterai ORDER BY id DESC LIMIT 10
+      ) temp
+    ) AS avg_load
   FROM baterai b
   WHERE b.id = (SELECT MAX(id) FROM baterai)
   LIMIT 1
@@ -464,11 +449,44 @@ const getAllPanelBaterai = (req, res) => {
   });
 };
 
+const getRecentData = (req, res) => {
+  const query = `
+    SELECT 
+      b.created_at AS timestamp,
+      b.voltage AS baterai_voltage,
+      b.current AS baterai_current,
+      b.power AS baterai_power,
+      b.temperature AS baterai_temperature,
+      f.fuzzy_score,
+      f.fuzzy_status
+    FROM (
+      SELECT * FROM baterai ORDER BY id DESC LIMIT 10
+    ) b
+    LEFT JOIN fuzzy_baterai f ON f.baterai_id = b.id
+    ORDER BY b.id ASC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Gagal ambil data terbaru:", err);
+      return res.status(500).json({ message: "Gagal ambil data" });
+    }
+    res.json(results.map(row => ({
+      timestamp: row.timestamp,
+      voltage: row.baterai_voltage,
+      current: row.baterai_current,
+      power: row.baterai_power,
+      temperature: row.baterai_temperature,
+      fuzzy_score: row.fuzzy_score,
+      fuzzy_status: row.fuzzy_status
+    })));
+  });
+};
 
 module.exports = {
   postData,
   getLatestData,
-  getDailyEnergy,
+  getRecentData,
   getDashboardMetrics,
   getCombinedData,
   getAllPanelBaterai
