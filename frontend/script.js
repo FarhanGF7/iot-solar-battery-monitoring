@@ -4,8 +4,10 @@ function toggleSidebar() {
 }
 
 // =====================================================
-//  FETCH DATA LIVE (Panel & Baterai)
+//  FETCH DATA LIVE (Baterai)
 // =====================================================
+let lastTimestamp = null;
+
 // Function to update the dashboard UI with new data
 function updateDashboardUI(data) {
   if (!data.baterai) {
@@ -53,12 +55,14 @@ function updateDashboardUI(data) {
     cardStatus.style.borderLeft = "5px solid #dc3545";
   }
 
-  // 4. Tambah ke grafik (Line Chart)
-  const now = new Date().toLocaleTimeString();
+  // 4. Tambah ke grafik (Line Chart) jika timestamp baru
+  const recordTimestamp = data.baterai.timestamp;
   const chart = window.lineChart;
 
-  if (chart) {
-    chart.data.labels.push(now);
+  if (chart && recordTimestamp && recordTimestamp !== lastTimestamp) {
+    lastTimestamp = recordTimestamp;
+    const timeStr = new Date(recordTimestamp).toLocaleTimeString();
+    chart.data.labels.push(timeStr);
     chart.data.datasets[0].data.push(dayaBaterai);
 
     if (chart.data.labels.length > 10) {
@@ -68,6 +72,27 @@ function updateDashboardUI(data) {
 
     chart.update();
   }
+}
+
+function initializeDashboardChart(records) {
+  const chart = window.lineChart;
+  if (!chart || !Array.isArray(records) || records.length === 0) return;
+
+  chart.data.labels = [];
+  chart.data.datasets[0].data = [];
+
+  records.forEach(r => {
+    const timeStr = new Date(r.timestamp).toLocaleTimeString();
+    chart.data.labels.push(timeStr);
+    chart.data.datasets[0].data.push(r.power || 0);
+  });
+
+  const lastRecord = records[records.length - 1];
+  if (lastRecord) {
+    lastTimestamp = lastRecord.timestamp;
+  }
+
+  chart.update();
 }
 
 async function fetchLiveData() {
@@ -85,6 +110,21 @@ async function fetchLiveData() {
       deviceStatus.style.borderColor = 'rgba(255,82,82,0.2)';
     }
   }
+}
+
+async function initializeDashboard() {
+  try {
+    const recentRes = await fetch('/api/data/recent');
+    const recentData = await recentRes.json();
+
+    if (Array.isArray(recentData) && recentData.length > 0) {
+      initializeDashboardChart(recentData);
+    }
+  } catch (err) {
+    console.error('❌ Gagal inisialisasi grafik:', err);
+  }
+
+  await fetchLiveData();
 }
 
 // =====================================================
@@ -170,7 +210,7 @@ socket.on('disconnect', (reason) => {
 // =====================================================
 //  INITIAL LOAD & FALLBACK AUTO UPDATE
 // =====================================================
-fetchLiveData();
+initializeDashboard();
 loadDashboardMetrics();
 
 // Fallback Polling: Hanya fetch jika socket tidak terhubung
@@ -179,7 +219,68 @@ setInterval(() => {
     console.log('🔄 Socket offline, mencoba fetch fallback...');
     fetchLiveData();
   }
-}, 5000);
+}, 60000); // 1 menit
 
 // Tetap update dashboard metrics averages (daya rata-rata) setiap 10 detik
 setInterval(loadDashboardMetrics, 10000);
+
+// =====================================================
+//  NOTIFIKASI REAL-TIME SENSOR ERROR
+// =====================================================
+let sensorErrorTimeout = null;
+
+socket.on('sensorError', (data) => {
+  console.warn('⚠️ Sensor Error diterima:', data);
+  showSensorErrorBanner(data);
+});
+
+function showSensorErrorBanner(errorData) {
+  let banner = document.getElementById('sensor-error-banner');
+
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'sensor-error-banner';
+    banner.style.cssText = `
+      position: fixed; top: 56px; left: 0; right: 0; z-index: 999;
+      background: linear-gradient(135deg, #dc3545, #c0392b);
+      color: white; padding: 12px 20px;
+      font-size: 0.9rem; font-weight: 500;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(220,53,69,0.4);
+      animation: slideDown 0.3s ease;
+    `;
+
+    // Tambahkan animasi CSS jika belum ada
+    if (!document.getElementById('sensor-error-anim')) {
+      const style = document.createElement('style');
+      style.id = 'sensor-error-anim';
+      style.textContent = `
+        @keyframes slideDown {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(banner);
+  }
+
+  const timeStr = new Date(errorData.timestamp).toLocaleTimeString('id-ID');
+
+  banner.innerHTML = `
+    <span>⚠️ <b>[${errorData.sensor}]</b> ${errorData.message} — ${timeStr}</span>
+    <button onclick="this.parentElement.remove()" style="
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
+    ">✕ Tutup</button>
+  `;
+
+  banner.style.display = 'flex';
+
+  // Auto-hide setelah 30 detik
+  if (sensorErrorTimeout) clearTimeout(sensorErrorTimeout);
+  sensorErrorTimeout = setTimeout(() => {
+    if (banner) banner.style.display = 'none';
+  }, 30000);
+}

@@ -1,37 +1,201 @@
 // controllers/dataController.js
-function voltageToSoc(v) {
-  if (v >= 12.80) return 100;
-  if (v >= 12.70) return 90;
-  if (v >= 12.60) return 80;
-  if (v >= 12.50) return 70;
-  if (v >= 12.42) return 60;
-  if (v >= 12.32) return 50;
-  if (v >= 12.20) return 40;
-  if (v >= 12.06) return 30;
-  if (v >= 11.90) return 20;
-  if (v >= 11.80) return 10;
-  return 0;
-}
 const db = require('../db').pool;
 
 // 
 // === MESIN FUZZY LOGIC ===
 // 
 function hitungFuzzyBaterai(v, i, t) {
-    // 1. FUZZIFIKASI TEGANGAN (Voltage)
-    let v_rendah = (v <= 11.5) ? 1 : (v >= 12.0 ? 0 : (12.0 - v) / (12.0 - 11.5));
-    let v_normal = (v <= 11.5 || v >= 14.0) ? 0 : (v > 11.5 && v <= 12.0 ? (v - 11.5) / (12.0 - 11.5) : (v >= 13.5 && v < 14.0 ? (14.0 - v) / (14.0 - 13.5) : 1));
-    let v_tinggi = (v <= 13.5) ? 0 : (v >= 14.0 ? 1 : (v - 13.5) / (14.0 - 13.5));
+    // Deklarasi variabel derajat keanggotaan
+    let v_rendah, v_normal, v_tinggi;
+    let i_ringan, i_sedang, i_berat;
+    let t_normal, t_hangat, t_panas;
 
-    // 2. FUZZIFIKASI ARUS (Current)
-    let i_ringan = (i <= 2) ? 1 : (i >= 3 ? 0 : (3 - i) / (3 - 2));
-    let i_sedang = (i <= 2 || i >= 6) ? 0 : (i > 2 && i <= 3 ? (i - 2) / (3 - 2) : (i >= 5 && i < 6 ? (6 - i) / (6 - 5) : 1));
-    let i_berat  = (i <= 5) ? 0 : (i >= 6 ? 1 : (i - 5) / (6 - 5));
+// ==========================================
+// 1. FUZZIFIKASI TEGANGAN (Voltage)
+// ==========================================
+// -- Himpunan Tegangan Rendah --
+if (v <= 11.5) {
+    // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
+    // Tegangan sepenuhnya termasuk kategori Rendah
+    v_rendah = 1;
+} else if (v >= 12.0) {
+    // Kondisi 2: Lebih dari atau sama dengan titik batas atas
+    // Tegangan sama sekali tidak termasuk kategori Rendah
+    v_rendah = 0;
+} else {
+    // Kondisi 3: Berangsur turun menjauhi kategori Rendah
+    // menuju kategori Normal
+    // Perhitungan:
+    // (Batas Atas - Tegangan) / (Batas Atas - Batas Bawah)
+    v_rendah = (12.0 - v) / (12.0 - 11.5);
+}
 
-    // 3. FUZZIFIKASI SUHU (Temperature)
-    let t_normal = (t <= 35) ? 1 : (t >= 40 ? 0 : (40 - t) / (40 - 35));
-    let t_hangat = (t <= 35 || t >= 50) ? 0 : (t > 35 && t <= 40 ? (t - 35) / (40 - 35) : (t >= 45 && t < 50 ? (50 - t) / (50 - 45) : 1));
-    let t_panas  = (t <= 45) ? 0 : (t >= 50 ? 1 : (t - 45) / (50 - 45));
+// -- Himpunan Tegangan Normal --
+if (v <= 11.5 || v >= 14.0) {
+    // Kondisi 1: Tegangan berada di luar batas kategori Normal
+    // Tegangan sama sekali tidak termasuk kategori Normal
+    v_normal = 0;
+} else if (v > 11.5 && v <= 12.0) {
+    // Kondisi 2: Berangsur naik menuju kategori Normal
+    // Perhitungan:
+    // (Tegangan - Batas Bawah) / (Titik Penuh - Batas Bawah)
+    v_normal = (v - 11.5) / (12.0 - 11.5);
+} else if (v >= 13.5 && v < 14.0) {
+    // Kondisi 3: Berangsur turun menjauhi kategori Normal
+    // menuju kategori Tinggi
+    // Perhitungan:
+    // (Batas Atas - Tegangan) / (Batas Atas - Titik Turun)
+    v_normal = (14.0 - v) / (14.0 - 13.5);
+} else {
+    // Kondisi 4: Tegangan berada pada rentang 12.0–13.5 V
+    // Tegangan sepenuhnya termasuk kategori Normal
+    v_normal = 1;
+}
+
+// -- Himpunan Tegangan Tinggi --
+if (v <= 13.5) {
+    // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
+    // Tegangan sama sekali tidak termasuk kategori Tinggi
+    v_tinggi = 0;
+
+} else if (v >= 14.0) {
+    // Kondisi 2: Lebih dari atau sama dengan batas keanggotaan penuh
+    // Tegangan sepenuhnya termasuk kategori Tinggi
+    v_tinggi = 1;
+
+} else {
+    // Kondisi 3: Berangsur naik menuju kategori Tinggi
+    // Perhitungan:
+    // (Tegangan - Batas Bawah) / (Batas Atas - Batas Bawah)
+    v_tinggi = (v - 13.5) / (14.0 - 13.5);
+}
+
+// ==========================================
+// 2. FUZZIFIKASI ARUS (Current)
+// ==========================================
+// -- Himpunan Arus Ringan --
+if (i <= 0.35) {
+    // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
+    // Arus sepenuhnya termasuk kategori Ringan
+    i_ringan = 1;
+} else if (i >= 0.50) {
+    // Kondisi 2: Lebih dari atau sama dengan titik batas atas
+    // Arus sama sekali tidak termasuk kategori Ringan
+    i_ringan = 0;
+} else {
+    // Kondisi 3: Berangsur turun menjauhi kategori Ringan
+    // menuju kategori Sedang
+    // Perhitungan:
+    // (Batas Atas - Arus) / (Batas Atas - Batas Bawah)
+    i_ringan = (0.50 - i) / (0.50 - 0.35);
+}
+
+// -- Himpunan Arus Sedang --
+if (i <= 0.35 || i >= 1.13) {
+    // Kondisi 1: Arus berada di luar batas kategori Sedang
+    // Arus sama sekali tidak termasuk kategori Sedang
+    i_sedang = 0;
+} else if (i > 0.35 && i <= 0.50) {
+    // Kondisi 2: Berangsur naik menuju kategori Sedang
+    // Perhitungan:
+    // (Arus - Batas Bawah) / (Titik Penuh - Batas Bawah)
+    i_sedang = (i - 0.35) / (0.50 - 0.35);
+} else if (i >= 0.90 && i < 1.13) {
+    // Kondisi 3: Berangsur turun menjauhi kategori Sedang
+    // menuju kategori Berat
+    // Perhitungan:
+    // (Batas Atas - Arus) / (Batas Atas - Titik Turun)
+    i_sedang = (1.13 - i) / (1.13 - 0.90);
+} else {
+    // Kondisi 4: Arus berada pada rentang 0.50–0.90 A
+    // Arus sepenuhnya termasuk kategori Sedang
+    i_sedang = 1;
+}
+
+// -- Himpunan Arus Berat --
+if (i <= 0.90) {
+    // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
+    // Arus sama sekali tidak termasuk kategori Berat
+    i_berat = 0;
+
+} else if (i >= 1.13) {
+    // Kondisi 2: Lebih dari atau sama dengan batas keanggotaan penuh
+    // Arus sepenuhnya termasuk kategori Berat
+    i_berat = 1;
+
+} else {
+    // Kondisi 3: Berangsur naik menuju kategori Berat
+    // Perhitungan:
+    // (Arus - Batas Bawah) / (Batas Atas - Batas Bawah)
+    i_berat = (i - 0.90) / (1.13 - 0.90);
+}
+
+
+// ==========================================
+// 3. FUZZIFIKASI SUHU (Temperature)
+// ==========================================
+// -- Himpunan Suhu Normal --
+if (t <= 35) {
+    // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
+    // Suhu sepenuhnya termasuk kategori Normal
+    t_normal = 1;
+
+} else if (t >= 36) {
+    // Kondisi 2: Lebih dari atau sama dengan titik batas atas
+    // Suhu sama sekali tidak termasuk kategori Normal
+    t_normal = 0;
+
+} else {
+    // Kondisi 3: Berangsur turun menjauhi kategori Normal
+    // menuju kategori Hangat
+    // Perhitungan:
+    // (Batas Atas - Suhu) / (Batas Atas - Batas Bawah)
+    t_normal = (36 - t) / (36 - 35);
+}
+
+// -- Himpunan Suhu Hangat --
+if (t <= 35 || t >= 41) {
+    // Kondisi 1: Suhu berada di luar batas kategori Hangat
+    // Suhu sama sekali tidak termasuk kategori Hangat
+    t_hangat = 0;
+
+} else if (t > 35 && t < 36) {
+    // Kondisi 2: Berangsur naik menuju kategori Hangat
+    // Perhitungan:
+    // (Suhu - Batas Bawah) / (Titik Penuh - Batas Bawah)
+    t_hangat = (t - 35) / (36 - 35);
+
+} else if (t > 40 && t < 41) {
+    // Kondisi 3: Berangsur turun menjauhi kategori Hangat
+    // menuju kategori Panas
+    // Perhitungan:
+    // (Batas Atas - Suhu) / (Batas Atas - Titik Turun)
+    t_hangat = (41 - t) / (41 - 40);
+
+} else {
+    // Kondisi 4: Suhu berada pada rentang 36–40°C
+    // Suhu sepenuhnya termasuk kategori Hangat
+    t_hangat = 1;
+}
+
+
+// -- Himpunan Suhu Panas --
+if (t <= 40) {
+    // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
+    // Suhu sama sekali tidak termasuk kategori Panas
+    t_panas = 0;
+
+} else if (t >= 41) {
+    // Kondisi 2: Lebih dari atau sama dengan batas keanggotaan penuh
+    // Suhu sepenuhnya termasuk kategori Panas
+    t_panas = 1;
+
+} else {
+    // Kondisi 3: Berangsur naik menuju kategori Panas
+    // Perhitungan:
+    // (Suhu - Batas Bawah) / (Batas Atas - Batas Bawah)
+    t_panas = (t - 40) / (41 - 40);
+}
   
     // 4. EVALUASI ATURAN (Rule Base & Inferensi)
     let rules = [];
@@ -39,13 +203,36 @@ function hitungFuzzyBaterai(v, i, t) {
     // Nilai Konstanta Output
     const VAL_KRITIS = 25, VAL_WASPADA = 60, VAL_BAIK = 100;
 
-    rules.push({ alpha: Math.min(v_normal, t_normal), z: VAL_BAIK }); // Rule 1: IF V Normal AND T Normal THEN Baik
-    rules.push({ alpha: Math.min(v_tinggi, t_normal), z: VAL_BAIK }); // Rule 2: IF V Tinggi AND T Normal THEN Baik
-    rules.push({ alpha: t_panas, z: VAL_KRITIS }); // Rule 3: IF T Panas THEN Kritis
-    rules.push({ alpha: Math.min(v_rendah, i_berat), z: VAL_KRITIS }); // Rule 4: IF V Rendah AND I Berat THEN Kritis
-    rules.push({ alpha: Math.min(v_rendah, t_hangat), z: VAL_WASPADA }); // Rule 5: IF V Rendah AND T Hangat THEN Waspada
-    rules.push({ alpha: Math.min(v_normal, t_hangat), z: VAL_WASPADA }); // Rule 6: IF V Normal AND T Hangat THEN Waspada
-    rules.push({ alpha: Math.min(v_tinggi, t_hangat), z: VAL_WASPADA }); // Rule 7: IF V Tinggi AND T Hangat THEN Waspada
+    // Suhu NORMAL
+    rules.push({ alpha: Math.min(v_rendah, i_ringan, t_normal), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_rendah, i_sedang, t_normal), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_rendah, i_berat, t_normal), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_normal, i_ringan, t_normal), z: VAL_BAIK });
+    rules.push({ alpha: Math.min(v_normal, i_sedang, t_normal), z: VAL_BAIK });
+    rules.push({ alpha: Math.min(v_normal, i_berat, t_normal), z: VAL_BAIK });
+    rules.push({ alpha: Math.min(v_tinggi, i_ringan, t_normal), z: VAL_BAIK });
+    rules.push({ alpha: Math.min(v_tinggi, i_sedang, t_normal), z: VAL_BAIK });
+    rules.push({ alpha: Math.min(v_tinggi, i_berat, t_normal), z: VAL_BAIK });
+    // Suhu HANGAT
+    rules.push({ alpha: Math.min(v_rendah, i_ringan, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_rendah, i_sedang, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_rendah, i_berat, t_hangat), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_normal, i_ringan, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_normal, i_sedang, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_normal, i_berat, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_tinggi, i_ringan, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_tinggi, i_sedang, t_hangat), z: VAL_WASPADA });
+    rules.push({ alpha: Math.min(v_tinggi, i_berat, t_hangat), z: VAL_WASPADA });
+    // Suhu PANAS
+    rules.push({ alpha: Math.min(v_rendah, i_ringan, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_rendah, i_sedang, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_rendah, i_berat, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_normal, i_ringan, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_normal, i_sedang, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_normal, i_berat, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_tinggi, i_ringan, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_tinggi, i_sedang, t_panas), z: VAL_KRITIS });
+    rules.push({ alpha: Math.min(v_tinggi, i_berat, t_panas), z: VAL_KRITIS });
 
     // 5. DEFUZZIFIKASI (Metode Weighted Average / Rata-rata Berbobot)
     let totalAlphaZ = 0, totalAlpha = 0;
@@ -77,10 +264,46 @@ const postData = (req, res) => {
     return res.status(400).json({ message: "Data tidak lengkap" });
   }
 
+  const voltage = parseFloat(baterai.voltage) || 0;
+  const current = parseFloat(baterai.current) || 0;
+  const power = parseFloat(baterai.power) || 0;
+  const temperature = parseFloat(baterai.temperature) || 0;
+
   // Jalankan perhitungan Fuzzy Logic menggunakan data dari baterai
-  // Beri nilai default 30 (suhu ruangan) jika sensor suhu sempat gagal terbaca
-  const suhuBaterai = baterai.temperature || 30.0; 
-  const hasilFuzzy = hitungFuzzyBaterai(baterai.voltage, baterai.current, suhuBaterai);
+  let hasilFuzzy;
+  
+  // Pengaman sisi server: Jika tegangan 0 (baterai putus/sensor error) 
+  // ATAU suhu bernilai 0 / kurang dari -100 (sensor DS18B20 putus),
+  // paksa status menjadi Kritis agar tidak menghasilkan status "Baik".
+  if (voltage === 0 || temperature === 0 || temperature <= -100) {
+    hasilFuzzy = { score: 25.00, status: "Kritis" };
+
+    // Emit sinyal error real-time ke web
+    const io = req.app.get("io");
+    if (io) {
+      let sensorName = "SEMUA";
+      let errorMsg = "Semua sensor gagal membaca data.";
+      if (voltage === 0 && (temperature === 0 || temperature <= -100)) {
+        sensorName = "SEMUA";
+        errorMsg = "Semua sensor (INA219 + DS18B20) gagal membaca data.";
+      } else if (voltage === 0) {
+        sensorName = "INA219";
+        errorMsg = "Sensor daya/baterai terputus atau tidak terbaca.";
+      } else {
+        sensorName = "DS18B20";
+        errorMsg = "Sensor suhu terputus atau tidak terbaca.";
+      }
+
+      io.emit("sensorError", {
+        sensor: sensorName,
+        status: "TERPUTUS",
+        message: errorMsg,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } else {
+    hasilFuzzy = hitungFuzzyBaterai(voltage, current, temperature);
+  }
 
   // Perintah SQL untuk Baterai 
   const qBaterai = `INSERT INTO baterai (voltage, current, power, temperature) VALUES (?, ?, ?, ?)`;
@@ -89,7 +312,7 @@ const postData = (req, res) => {
   const qFuzzy = `INSERT INTO fuzzy_baterai (baterai_id, fuzzy_score, fuzzy_status) VALUES (?, ?, ?)`;
 
   // Simpan data baterai beserta suhu
-  db.query(qBaterai, [baterai.voltage, baterai.current, baterai.power, suhuBaterai], (err2, resultBaterai) => {
+  db.query(qBaterai, [voltage, current, power, temperature], (err2, resultBaterai) => {
     if (err2) {
       console.error("Gagal simpan BATERAI:", err2);
       return res.status(500).json({ message: "Gagal simpan data baterai" });
@@ -104,16 +327,20 @@ const postData = (req, res) => {
         return res.status(500).json({ message: "Gagal simpan data fuzzy" });
       }
 
+      // Cetak notifikasi penerimaan data di terminal Node.js
+      console.log(`📥 [ESP32 - Baterai] Diterima: ${voltage}V | ${current}A | ${power}W | Suhu: ${temperature}°C -> Status Fuzzy: ${hasilFuzzy.status} (Skor: ${hasilFuzzy.score})`);
+
       // Emit data realtime via Socket.IO
       const io = req.app.get("io");
       if (io) {
         io.emit("latestData", {
           baterai: {
-            voltage: parseFloat(baterai.voltage),
-            current: parseFloat(baterai.current),
-            power: parseFloat(baterai.power),
-            temperature: parseFloat(suhuBaterai),
-            fuzzy_score: parseFloat(hasilFuzzy.score),
+            timestamp: new Date().toISOString(),
+            voltage: voltage,
+            current: current,
+            power: power,
+            temperature: temperature,
+            fuzzy_score: hasilFuzzy.score,
             fuzzy_status: hasilFuzzy.status
           }
         });
@@ -134,6 +361,7 @@ const postData = (req, res) => {
 const getLatestData = (req, res) => {
   const query = `
     SELECT 
+      b.created_at AS timestamp,
       b.voltage AS baterai_voltage,
       b.current AS baterai_current,
       b.power AS baterai_power,
@@ -158,6 +386,7 @@ const getLatestData = (req, res) => {
 
     res.json({
       baterai: {
+        timestamp: results[0].timestamp,
         voltage: results[0].baterai_voltage,
         current: results[0].baterai_current,
         power: results[0].baterai_power,
@@ -169,56 +398,17 @@ const getLatestData = (req, res) => {
   });
 };
 
-//
-// === GET HISTORY ENERGI ===
-//
-const getDailyEnergy = (req, res) => {
-  const query = `
-    SELECT 
-      DATE_FORMAT(created_at, '%Y-%m-%d') AS date,
-      ROUND(SUM(power * 1800 / 3600000), 4) AS energy_kWh
-    FROM baterai
-    GROUP BY DATE(created_at)
-    ORDER BY date DESC
-    LIMIT 7
-  `;
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Gagal ambil data energi:", err);
-      return res.status(500).json({ message: "Gagal ambil data energi" });
-    }
-    res.json(results);
-  });
-};
-
 
 //
 // === DASHBOARD METRICS ===
 //
-const PANEL_WP = 20;    // panel 20 watt-peak
-const INTERVAL = 1800;     // interval data 30 menit
-
 const getDashboardMetrics = (req, res) => {
   const query = `
-  SELECT 
-    b.voltage AS batt_voltage,
-    b.power AS power_load,
-    (
-      SELECT ROUND(SUM(power * ${INTERVAL} / 3600000), 4)
-      FROM baterai 
-      WHERE DATE(created_at) = CURDATE()
-    ) AS energy_today,
-    (
-      SELECT ROUND(MAX(power), 2)
-      FROM baterai
-      WHERE DATE(created_at) = CURDATE()
-    ) AS peak_power,
-    ROUND(b.power, 2) AS avg_load
-  FROM baterai b
-  WHERE b.id = (SELECT MAX(id) FROM baterai)
-  LIMIT 1
-`;
+    SELECT IFNULL(ROUND(AVG(power), 2), 0) AS avg_load
+    FROM (
+      SELECT power FROM baterai ORDER BY id DESC LIMIT 10
+    ) temp
+  `;
 
   db.query(query, (err, results) => {
     if (err) {
@@ -227,34 +417,11 @@ const getDashboardMetrics = (req, res) => {
     }
 
     if (results.length === 0 || !results[0]) {
-      return res.json({
-        energy_today: 0,
-        peak_power: 0,
-        efficiency: "0.0",
-        power_load: 0,
-        avg_load: 0,
-        battery_voltage: 12.0,
-        battery_health: 50
-      });
+      return res.json({ avg_load: 0 });
     }
 
-    const row = results[0];
-
-    // SOC baterai
-    const battery_voltage = row.batt_voltage || 12.0;
-    const battery_health = voltageToSoc(battery_voltage);
-
-    // Efisiensi diset 0 karena data panel ditiadakan
-    const efficiency = 0;
-
     res.json({
-      energy_today: row.energy_today,
-      peak_power: row.peak_power,
-      efficiency: efficiency.toFixed(1),
-      power_load: row.power_load,
-      avg_load: row.avg_load,
-      battery_voltage: battery_voltage,
-      battery_health: battery_health
+      avg_load: results[0].avg_load
     });
   });
 };
@@ -314,11 +481,44 @@ const getAllPanelBaterai = (req, res) => {
   });
 };
 
+const getRecentData = (req, res) => {
+  const query = `
+    SELECT 
+      b.created_at AS timestamp,
+      b.voltage AS baterai_voltage,
+      b.current AS baterai_current,
+      b.power AS baterai_power,
+      b.temperature AS baterai_temperature,
+      f.fuzzy_score,
+      f.fuzzy_status
+    FROM (
+      SELECT * FROM baterai ORDER BY id DESC LIMIT 10
+    ) b
+    LEFT JOIN fuzzy_baterai f ON f.baterai_id = b.id
+    ORDER BY b.id ASC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Gagal ambil data terbaru:", err);
+      return res.status(500).json({ message: "Gagal ambil data" });
+    }
+    res.json(results.map(row => ({
+      timestamp: row.timestamp,
+      voltage: row.baterai_voltage,
+      current: row.baterai_current,
+      power: row.baterai_power,
+      temperature: row.baterai_temperature,
+      fuzzy_score: row.fuzzy_score,
+      fuzzy_status: row.fuzzy_status
+    })));
+  });
+};
 
 module.exports = {
   postData,
   getLatestData,
-  getDailyEnergy,
+  getRecentData,
   getDashboardMetrics,
   getCombinedData,
   getAllPanelBaterai

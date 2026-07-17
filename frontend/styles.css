@@ -51,6 +51,13 @@
     background-color: #0000001c;
     border-left: 4px solid #ffffff;
   }
+
+  .sidebar a.active {
+    background-color: rgba(0, 200, 255, 0.1);
+    border-left: 4px solid #00c8ff;
+    color: #00c8ff;
+    font-weight: bold;
+  }
   /* FIX SIDEBAR POSISI */
   .sidebar {
       position: fixed;
@@ -64,6 +71,17 @@
   /* Saat hide, geser keluar */
   .sidebar.hide {
       transform: translateX(-100%);
+  }
+
+  /* Geser konten utama ke kanan saat sidebar tampil */
+  .sidebar:not(.hide) ~ .content,
+  .sidebar:not(.hide) ~ .main-content {
+      margin-left: 200px;
+  }
+
+  /* Transisi mulus untuk pergeseran konten */
+  .content, .main-content {
+      transition: margin-left 0.3s ease;
   }
 
   .topbar {
@@ -124,13 +142,15 @@
 
   .analytics-metrics .card {
     margin-top: 20px;
-    border-left: 4px solid #ffffff0e;
+    background-color: #111927;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #00c8ff;
     padding: 15px;
     text-align: left;
     width: 23%;
     box-sizing: border-box;
     border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 200, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   }
 
   .card h6 {
@@ -335,32 +355,34 @@
     font-size: 14px;
     text-align: center;
     color: #ffffff;
-    background-color: #1f2937; /* warna dasar tabel */
+    background-color: #111927;
     border-radius: 10px;
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .data-table th, .data-table td {
-    padding: 10px 12px;
-    border: 1px solid #2f3b4c;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .data-table th {
-    background-color: #374151; /* header lebih gelap */
+    background-color: #1e293b;
     font-weight: 600;
     text-transform: uppercase;
+    color: #00c8ff;
   }
 
   .data-table tbody tr:nth-child(even) {
-    background-color: #2d3748;
+    background-color: #1c2533;
   }
 
   .data-table tbody tr:nth-child(odd) {
-    background-color: #1e2632;
+    background-color: #111927;
   }
 
   .data-table tbody tr:hover {
-    background-color: #475569;
+    background-color: rgba(255, 255, 255, 0.08);
     transition: background-color 0.2s;
   }
 
@@ -423,9 +445,11 @@
 
   .chart-section {
     margin-bottom: 40px;
-    background-color: #1e293b;
+    background-color: #111927;
+    border: 1px solid #2f3b4c;
     padding: 20px;
     border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
   #exportBtn:hover {
     background-color: #009fcf;

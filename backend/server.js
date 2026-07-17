@@ -21,12 +21,8 @@ const io = new Server(server, {
   pingTimeout: 1800 * 1000, 
 });
 
-
-
 // Simpan io agar bisa diakses di controller
 app.set("io", io);
-
-
 
 const PORT = process.env.PORT || 3000;
 

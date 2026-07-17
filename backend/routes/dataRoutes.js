@@ -4,7 +4,7 @@ const router = express.Router();
 const {
   postData,
   getLatestData,
-  getDailyEnergy,
+  getRecentData,
   getDashboardMetrics,
   getCombinedData,
   getAllPanelBaterai
@@ -12,10 +12,10 @@ const {
 
 // Session check moved to authRoutes.js
 
-// === DATA (Panel & Baterai) ===
+// === DATA (Baterai) ===
 router.post('/data', postData);
 router.get('/data/latest', getLatestData);
-router.get('/history', getDailyEnergy);
+router.get('/data/recent', getRecentData);
 router.get('/data/combined', getCombinedData);
 router.get('/data/full', getAllPanelBaterai);
 
