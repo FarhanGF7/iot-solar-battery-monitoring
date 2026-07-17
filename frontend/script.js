@@ -223,3 +223,64 @@ setInterval(() => {
 
 // Tetap update dashboard metrics averages (daya rata-rata) setiap 10 detik
 setInterval(loadDashboardMetrics, 10000);
+
+// =====================================================
+//  NOTIFIKASI REAL-TIME SENSOR ERROR
+// =====================================================
+let sensorErrorTimeout = null;
+
+socket.on('sensorError', (data) => {
+  console.warn('⚠️ Sensor Error diterima:', data);
+  showSensorErrorBanner(data);
+});
+
+function showSensorErrorBanner(errorData) {
+  let banner = document.getElementById('sensor-error-banner');
+
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'sensor-error-banner';
+    banner.style.cssText = `
+      position: fixed; top: 56px; left: 0; right: 0; z-index: 999;
+      background: linear-gradient(135deg, #dc3545, #c0392b);
+      color: white; padding: 12px 20px;
+      font-size: 0.9rem; font-weight: 500;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(220,53,69,0.4);
+      animation: slideDown 0.3s ease;
+    `;
+
+    // Tambahkan animasi CSS jika belum ada
+    if (!document.getElementById('sensor-error-anim')) {
+      const style = document.createElement('style');
+      style.id = 'sensor-error-anim';
+      style.textContent = `
+        @keyframes slideDown {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(banner);
+  }
+
+  const timeStr = new Date(errorData.timestamp).toLocaleTimeString('id-ID');
+
+  banner.innerHTML = `
+    <span>⚠️ <b>[${errorData.sensor}]</b> ${errorData.message} — ${timeStr}</span>
+    <button onclick="this.parentElement.remove()" style="
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
+    ">✕ Tutup</button>
+  `;
+
+  banner.style.display = 'flex';
+
+  // Auto-hide setelah 30 detik
+  if (sensorErrorTimeout) clearTimeout(sensorErrorTimeout);
+  sensorErrorTimeout = setTimeout(() => {
+    if (banner) banner.style.display = 'none';
+  }, 30000);
+}
