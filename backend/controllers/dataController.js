@@ -1,5 +1,9 @@
 // controllers/dataController.js
 const db = require('../db').pool;
+const {
+  validateSensorPayload,
+  buildSensorError
+} = require('../services/sensorValidation');
 
 // 
 // === MESIN FUZZY LOGIC ===
@@ -74,11 +78,11 @@ if (v <= 13.5) {
 // 2. FUZZIFIKASI ARUS (Current)
 // ==========================================
 // -- Himpunan Arus Ringan --
-if (i <= 2) {
+if (i <= 0.35) {
     // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
     // Arus sepenuhnya termasuk kategori Ringan
     i_ringan = 1;
-} else if (i >= 3) {
+} else if (i >= 0.50) {
     // Kondisi 2: Lebih dari atau sama dengan titik batas atas
     // Arus sama sekali tidak termasuk kategori Ringan
     i_ringan = 0;
@@ -87,38 +91,38 @@ if (i <= 2) {
     // menuju kategori Sedang
     // Perhitungan:
     // (Batas Atas - Arus) / (Batas Atas - Batas Bawah)
-    i_ringan = (3 - i) / (3 - 2);
+    i_ringan = (0.50 - i) / (0.50 - 0.35);
 }
 
 // -- Himpunan Arus Sedang --
-if (i <= 2 || i >= 6) {
+if (i <= 0.35 || i >= 1.13) {
     // Kondisi 1: Arus berada di luar batas kategori Sedang
     // Arus sama sekali tidak termasuk kategori Sedang
     i_sedang = 0;
-} else if (i > 2 && i <= 3) {
+} else if (i > 0.35 && i <= 0.50) {
     // Kondisi 2: Berangsur naik menuju kategori Sedang
     // Perhitungan:
     // (Arus - Batas Bawah) / (Titik Penuh - Batas Bawah)
-    i_sedang = (i - 2) / (3 - 2);
-} else if (i >= 5 && i < 6) {
+    i_sedang = (i - 0.35) / (0.50 - 0.35);
+} else if (i >= 0.90 && i < 1.13) {
     // Kondisi 3: Berangsur turun menjauhi kategori Sedang
     // menuju kategori Berat
     // Perhitungan:
     // (Batas Atas - Arus) / (Batas Atas - Titik Turun)
-    i_sedang = (6 - i) / (6 - 5);
+    i_sedang = (1.13 - i) / (1.13 - 0.90);
 } else {
-    // Kondisi 4: Arus berada pada rentang 3.0–5.0 A
+    // Kondisi 4: Arus berada pada rentang 0.50–0.90 A
     // Arus sepenuhnya termasuk kategori Sedang
     i_sedang = 1;
 }
 
 // -- Himpunan Arus Berat --
-if (i <= 5) {
+if (i <= 0.90) {
     // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
     // Arus sama sekali tidak termasuk kategori Berat
     i_berat = 0;
 
-} else if (i >= 6) {
+} else if (i >= 1.13) {
     // Kondisi 2: Lebih dari atau sama dengan batas keanggotaan penuh
     // Arus sepenuhnya termasuk kategori Berat
     i_berat = 1;
@@ -127,7 +131,7 @@ if (i <= 5) {
     // Kondisi 3: Berangsur naik menuju kategori Berat
     // Perhitungan:
     // (Arus - Batas Bawah) / (Batas Atas - Batas Bawah)
-    i_berat = (i - 5) / (6 - 5);
+    i_berat = (i - 0.90) / (1.13 - 0.90);
 }
 
 
@@ -140,7 +144,7 @@ if (t <= 35) {
     // Suhu sepenuhnya termasuk kategori Normal
     t_normal = 1;
 
-} else if (t >= 40) {
+} else if (t >= 36) {
     // Kondisi 2: Lebih dari atau sama dengan titik batas atas
     // Suhu sama sekali tidak termasuk kategori Normal
     t_normal = 0;
@@ -150,41 +154,42 @@ if (t <= 35) {
     // menuju kategori Hangat
     // Perhitungan:
     // (Batas Atas - Suhu) / (Batas Atas - Batas Bawah)
-    t_normal = (40 - t) / (40 - 35);
+    t_normal = (36 - t) / (36 - 35);
 }
 
 // -- Himpunan Suhu Hangat --
-if (t <= 35 || t >= 50) {
+if (t <= 35 || t >= 41) {
     // Kondisi 1: Suhu berada di luar batas kategori Hangat
     // Suhu sama sekali tidak termasuk kategori Hangat
     t_hangat = 0;
 
-} else if (t > 35 && t < 40) {
+} else if (t > 35 && t < 36) {
     // Kondisi 2: Berangsur naik menuju kategori Hangat
     // Perhitungan:
     // (Suhu - Batas Bawah) / (Titik Penuh - Batas Bawah)
-    t_hangat = (t - 35) / (40 - 35);
+    t_hangat = (t - 35) / (36 - 35);
 
-} else if (t > 45 && t < 50) {
+} else if (t > 40 && t < 41) {
     // Kondisi 3: Berangsur turun menjauhi kategori Hangat
     // menuju kategori Panas
     // Perhitungan:
     // (Batas Atas - Suhu) / (Batas Atas - Titik Turun)
-    t_hangat = (50 - t) / (50 - 45);
+    t_hangat = (41 - t) / (41 - 40);
 
 } else {
-    // Kondisi 4: Suhu berada pada rentang 40–45°C
+    // Kondisi 4: Suhu berada pada rentang 36–40°C
     // Suhu sepenuhnya termasuk kategori Hangat
     t_hangat = 1;
 }
 
+
 // -- Himpunan Suhu Panas --
-if (t <= 45) {
+if (t <= 40) {
     // Kondisi 1: Kurang dari atau sama dengan titik batas bawah
     // Suhu sama sekali tidak termasuk kategori Panas
     t_panas = 0;
 
-} else if (t >= 50) {
+} else if (t >= 41) {
     // Kondisi 2: Lebih dari atau sama dengan batas keanggotaan penuh
     // Suhu sepenuhnya termasuk kategori Panas
     t_panas = 1;
@@ -193,25 +198,9 @@ if (t <= 45) {
     // Kondisi 3: Berangsur naik menuju kategori Panas
     // Perhitungan:
     // (Suhu - Batas Bawah) / (Batas Atas - Batas Bawah)
-    t_panas = (t - 45) / (50 - 45);
+    t_panas = (t - 40) / (41 - 40);
 }
-
-    // Ternary Operator Version
-    // 1. FUZZIFIKASI TEGANGAN (Voltage)
-    // let v_rendah = (v <= 11.5) ? 1 : (v >= 12.0 ? 0 : (12.0 - v) / (12.0 - 11.5));
-    // let v_normal = (v <= 11.5 || v >= 14.0) ? 0 : (v > 11.5 && v <= 12.0 ? (v - 11.5) / (12.0 - 11.5) : (v >= 13.5 && v < 14.0 ? (14.0 - v) / (14.0 - 13.5) : 1));
-    // let v_tinggi = (v <= 13.5) ? 0 : (v >= 14.0 ? 1 : (v - 13.5) / (14.0 - 13.5));
-
-    // 2. FUZZIFIKASI ARUS (Current)
-    // let i_ringan = (i <= 2) ? 1 : (i >= 3 ? 0 : (3 - i) / (3 - 2));
-    // let i_sedang = (i <= 2 || i >= 6) ? 0 : (i > 2 && i <= 3 ? (i - 2) / (3 - 2) : (i >= 5 && i < 6 ? (6 - i) / (6 - 5) : 1));
-    // let i_berat  = (i <= 5) ? 0 : (i >= 6 ? 1 : (i - 5) / (6 - 5));
-
-    // 3. FUZZIFIKASI SUHU (Temperature)
-    // let t_normal = (t <= 35) ? 1 : (t >= 40 ? 0 : (40 - t) / (40 - 35));
-    // let t_hangat = (t <= 35 || t >= 50) ? 0 : (t > 35 && t <= 40 ? (t - 35) / (40 - 35) : (t >= 45 && t < 50 ? (50 - t) / (50 - 45) : 1));
-    // let t_panas  = (t <= 45) ? 0 : (t >= 50 ? 1 : (t - 45) / (50 - 45));
-
+  
     // 4. EVALUASI ATURAN (Rule Base & Inferensi)
     let rules = [];
 
@@ -238,7 +227,7 @@ if (t <= 45) {
     rules.push({ alpha: Math.min(v_tinggi, i_ringan, t_hangat), z: VAL_WASPADA });
     rules.push({ alpha: Math.min(v_tinggi, i_sedang, t_hangat), z: VAL_WASPADA });
     rules.push({ alpha: Math.min(v_tinggi, i_berat, t_hangat), z: VAL_WASPADA });
-    // Suhu PANAS (override)
+    // Suhu PANAS
     rules.push({ alpha: Math.min(v_rendah, i_ringan, t_panas), z: VAL_KRITIS });
     rules.push({ alpha: Math.min(v_rendah, i_sedang, t_panas), z: VAL_KRITIS });
     rules.push({ alpha: Math.min(v_rendah, i_berat, t_panas), z: VAL_KRITIS });
@@ -279,40 +268,34 @@ const postData = (req, res) => {
     return res.status(400).json({ message: "Data tidak lengkap" });
   }
 
-  const voltage = parseFloat(baterai.voltage) || 0;
-  const current = parseFloat(baterai.current) || 0;
-  const power = parseFloat(baterai.power) || 0;
-  const temperature = parseFloat(baterai.temperature) || 0;
+  const validated = validateSensorPayload(baterai);
+  const hasExplicitSensorStatus = Boolean(baterai.sensor_status);
+  const {
+    voltage,
+    current,
+    power,
+    temperature,
+    sensorStatus,
+    errors: sensorErrors
+  } = validated;
 
   // Jalankan perhitungan Fuzzy Logic menggunakan data dari baterai
   let hasilFuzzy;
   
-  // Pengaman sisi server: Jika tegangan 0 (baterai putus/sensor error) 
-  // ATAU suhu bernilai 0 / kurang dari -100 (sensor DS18B20 putus),
-  // paksa status menjadi Kritis agar tidak menghasilkan status "Baik".
-  if (voltage === 0 || temperature === 0 || temperature <= -100) {
+  // Pengaman sisi server dijalankan sebelum proses fuzzy. Payload baru
+  // menggunakan status koneksi eksplisit dari ESP32, sedangkan payload lama
+  // tetap didukung melalui validasi nilai 0/-127.
+  if (sensorErrors.length > 0) {
     hasilFuzzy = { score: 25.00, status: "Kritis" };
 
     // Emit sinyal error real-time ke web
     const io = req.app.get("io");
-    if (io) {
-      let sensorName = "SEMUA";
-      let errorMsg = "Semua sensor gagal membaca data.";
-      if (voltage === 0 && (temperature === 0 || temperature <= -100)) {
-        sensorName = "SEMUA";
-        errorMsg = "Semua sensor (INA219 + DS18B20) gagal membaca data.";
-      } else if (voltage === 0) {
-        sensorName = "INA219";
-        errorMsg = "Sensor daya/baterai terputus atau tidak terbaca.";
-      } else {
-        sensorName = "DS18B20";
-        errorMsg = "Sensor suhu terputus atau tidak terbaca.";
-      }
-
+    // Perangkat baru sudah mengirim event hanya saat status berubah melalui
+    // /api/sensor/status. Event di sini khusus kompatibilitas payload lama.
+    if (io && !hasExplicitSensorStatus) {
+      const sensorError = buildSensorError(sensorErrors);
       io.emit("sensorError", {
-        sensor: sensorName,
-        status: "TERPUTUS",
-        message: errorMsg,
+        ...sensorError,
         timestamp: new Date().toISOString()
       });
     }
@@ -356,7 +339,8 @@ const postData = (req, res) => {
             power: power,
             temperature: temperature,
             fuzzy_score: hasilFuzzy.score,
-            fuzzy_status: hasilFuzzy.status
+            fuzzy_status: hasilFuzzy.status,
+            sensor_status: sensorStatus
           }
         });
       }
@@ -364,7 +348,9 @@ const postData = (req, res) => {
       res.json({ 
           message: "Data tersimpan & Dievaluasi!",
           fuzzy_status: hasilFuzzy.status,
-          fuzzy_score: hasilFuzzy.score
+          fuzzy_score: hasilFuzzy.score,
+          sensor_status: sensorStatus,
+          sensor_error: sensorErrors.length > 0
       });
     });
   });

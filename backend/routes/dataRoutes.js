@@ -9,6 +9,10 @@ const {
   getCombinedData,
   getAllPanelBaterai
 } = require('../controllers/dataController');
+const {
+  postSensorStatus,
+  getSensorEvents
+} = require('../controllers/sensorController');
 
 // Session check moved to authRoutes.js
 
@@ -18,6 +22,10 @@ router.get('/data/latest', getLatestData);
 router.get('/data/recent', getRecentData);
 router.get('/data/combined', getCombinedData);
 router.get('/data/full', getAllPanelBaterai);
+
+// === STATUS & RIWAYAT SENSOR ===
+router.post('/sensor/status', postSensorStatus);
+router.get('/sensor/events', getSensorEvents);
 
 
 // === DASHBOARD ===

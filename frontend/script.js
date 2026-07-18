@@ -234,6 +234,42 @@ socket.on('sensorError', (data) => {
   showSensorErrorBanner(data);
 });
 
+socket.on('sensorStatus', (data) => {
+  console.log('🔌 Perubahan status sensor:', data);
+
+  if (!data.connected) {
+    const statusEl = document.getElementById('battery-status');
+    const scoreEl = document.getElementById('battery-score');
+    const cardStatus = document.getElementById('card-status');
+
+    if (statusEl) {
+      statusEl.textContent = 'Kritis';
+      statusEl.style.color = '#dc3545';
+    }
+    if (scoreEl) scoreEl.textContent = 'Skor: 25';
+    if (cardStatus) cardStatus.style.borderLeft = '5px solid #dc3545';
+  } else {
+    showSensorRecoveryBanner(data);
+  }
+});
+
+function showSensorRecoveryBanner(data) {
+  const oldBanner = document.getElementById('sensor-error-banner');
+  if (oldBanner) oldBanner.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'sensor-recovery-banner';
+  banner.style.cssText = `
+    position: fixed; top: 56px; left: 0; right: 0; z-index: 999;
+    background: #198754; color: white; padding: 12px 20px;
+    font-size: 0.9rem; font-weight: 500;
+    box-shadow: 0 4px 12px rgba(25,135,84,0.35);
+  `;
+  banner.textContent = `✅ [${data.sensor}] ${data.message}`;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 10000);
+}
+
 function showSensorErrorBanner(errorData) {
   let banner = document.getElementById('sensor-error-banner');
 
